@@ -172,6 +172,16 @@ button { font-family: inherit; }
   color: var(--text);
 }
 
+/* Scope caveat — reads as a note, not body copy. */
+.start-intro-caveat {
+  padding: 14px 16px;
+  border-left: 3px solid var(--border-strong);
+  background: var(--surface-muted);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
 /* Wizard */
 .wizard-progress {
   list-style: none;
@@ -474,53 +484,6 @@ button { font-family: inherit; }
   color: var(--text);
 }
 
-/* Preview tab */
-.preview-intro {
-  text-align: center;
-  margin-bottom: 22px;
-}
-
-.preview-intro h2 {
-  margin: 0 0 8px;
-}
-
-.preview-controls {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 22px;
-}
-
-.segmented {
-  display: flex;
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  overflow: hidden;
-  width: fit-content;
-}
-
-.segmented-btn {
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.segmented-btn.is-active {
-  background: var(--primary);
-  color: #fff;
-}
-
-.segmented-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 /* Step 7: dropzone */
 .dropzone {
   display: flex;
@@ -743,6 +706,251 @@ button { font-family: inherit; }
 }
 
 /* Step 7: ambiguous-case review */
+/* States once, per table, that a reading was scored by hand — rather than
+   badging every row of it. */
+.manual-scored-note {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--teal);
+}
+
+.manual-scored-note[hidden] { display: none; }
+
+/* --- Group results ------------------------------------------------------ */
+.group-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(225px, 1fr));
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.group-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.group-stat-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.group-stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--teal);
+  line-height: 1.1;
+}
+
+.group-stat-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.group-trial-row { cursor: pointer; }
+.group-trial-row:hover { background: var(--surface-muted); }
+
+.group-trial-name { font-weight: 700; }
+
+/* Disclosure caret on each trial row. */
+.group-trial-name::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--primary);
+  transition: transform 0.12s ease;
+}
+
+.group-trial-row.is-open .group-trial-name::before {
+  transform: rotate(90deg);
+}
+
+.group-detail-row > td {
+  background: var(--surface-muted);
+  padding: 18px 20px;
+}
+
+.group-detail-row[hidden] { display: none; }
+
+.group-detail-heading {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.group-detail-row .cluster-table-wrap + .group-detail-heading {
+  margin-top: 22px;
+}
+
+/* Trial position while scoring a batch. */
+.trial-progress {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--primary-tint);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.trial-progress[hidden] { display: none; }
+
+/* --- Manual semantic scoring (step 8) ----------------------------------- */
+
+/* The response, in production order. Dragging across adjacent words groups
+   them, so text selection has to be suppressed. */
+.semantic-tx {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 16px 0 8px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.semantic-word {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.semantic-word:hover { border-color: var(--border-strong); }
+
+.semantic-word.in-cluster {
+  background: var(--teal-tint);
+  border-color: var(--teal-tint);
+  color: var(--teal);
+  font-weight: 700;
+}
+
+/* Members of one cluster sit flush, so the run reads as a single block. */
+.semantic-word.at-start { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.semantic-word.at-mid { border-radius: 0; }
+.semantic-word.at-end { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+
+.semantic-word.in-drag {
+  background: var(--rose-tint);
+  border-color: var(--rose);
+  color: var(--rose);
+  font-weight: 700;
+}
+
+.semantic-word .err {
+  color: var(--rose);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.semantic-sep { width: 7px; height: 1px; }
+.semantic-sep.inside { width: 0; }
+
+.semantic-hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.semantic-tools {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.btn-compact {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.semantic-live {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.semantic-live strong {
+  color: var(--teal);
+  font-size: 16px;
+}
+
+/* Cheat sheet — collapsed by default so it never crowds the transcript. */
+.cheatsheet {
+  margin-top: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  padding: 0 16px;
+}
+
+.cheatsheet-summary {
+  cursor: pointer;
+  padding: 13px 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  list-style: none;
+}
+
+.cheatsheet-summary::-webkit-details-marker { display: none; }
+
+.cheatsheet-summary::before {
+  content: "＋";
+  margin-right: 8px;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.cheatsheet[open] .cheatsheet-summary::before { content: "－"; }
+
+.cheatsheet-list {
+  margin: 0 0 4px;
+  padding: 0 0 8px;
+  list-style: none;
+}
+
+.cheatsheet-list li {
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.cheatsheet-rule {
+  display: inline-block;
+  min-width: 30px;
+  margin-right: 8px;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.cheatsheet-list li strong { color: var(--text); }
+
+.cheatsheet-link {
+  margin: 0;
+  padding: 10px 0 14px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
 .review-case-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -865,7 +1073,7 @@ button { font-family: inherit; }
   color: var(--text-muted);
 }
 
-/* Cluster-row review badges (results table + Preview) */
+/* Cluster-row review badges (results table) */
 .cluster-review-badge {
   display: inline-block;
   margin-left: 8px;

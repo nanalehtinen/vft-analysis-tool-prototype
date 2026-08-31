@@ -47,6 +47,30 @@ const VFT_DATA = {
     ],
   },
 
+  // Step 8: the manual's published semantic scoring for each worked example,
+  // as index ranges into that trial's `words`. Semantic clustering is scored
+  // by hand in this tool, so these ranges are never used to score for the
+  // rater — they back the Preview tab (which shows a completed run) and the
+  // demo shortcut on the manual scoring screen.
+  //
+  // Which reading is semantic depends on the task: in a phonemic trial the
+  // semantic reading is the task-discrepant one; in a semantic trial it is
+  // the task-congruent one.
+  semanticScoring: {
+    pvf: [[5, 6], [7, 9], [10, 12], [15, 17], [18, 19]],
+    svf: [[0, 1], [3, 4], [5, 6], [7, 11], [13, 15], [17, 20]],
+  },
+
+  // The main clustering rules, shown as a cheat sheet while scoring by hand.
+  // Condensed from Appendix A §2; the full text lives in the Scoring Rules tab.
+  semanticRules: [
+    { n: "2", t: "What counts as a cluster", d: "Two or more successively generated words belonging to the same semantic subcategory — taxonomic (birds), environmental (farm animals), geographical (African animals) or visual (snake, eel)." },
+    { n: "2.1", t: "Three or more words", d: "Three or more words belonging to the same subgroup always form a cluster." },
+    { n: "2.2", t: "Exactly two words", d: "Two words form a cluster only when they are not surrounded by words from a more overarching category — otherwise they join the larger cluster." },
+    { n: "2.3", t: "Associations are not clusters", d: "Antonyms included. Test: if more words could be added to the category, it is a cluster; if not, it is an association." },
+    { n: "—", t: "Overlaps", d: "A word connecting two clusters belongs to the first one only, and is never counted twice." },
+  ],
+
   // Step 7: canned results for the "Load example data" path, reproducing the
   // manual's own worked examples (Appendix A, sample protocols section).
   // Cluster breakdowns transcribed directly from the manual's tables; total
@@ -58,6 +82,9 @@ const VFT_DATA = {
       words: ["kissa", "komea", "koiras", "kaamea", "kurkkia", "kynä", "kumi", "kaunis", "komea", "korea", "kauhea", "kamala", "karu", "karkki", "karhea", "kauha", "kippo", "kuppi", "kurki", "kirjosieppo"],
       totalScore: 19,
       errors: [{ word: "komea", type: "Repetition — non-sequential", note: "Scored 0 for total score, but counted in its cluster (see \"komea (error)\" below)." }],
+      // Index in `words` of each error, so a manually scored cluster can tag
+      // the right occurrence (here the 2nd "komea", not the 1st).
+      errorIndices: [8],
       meanClusterSize: 3,
       switches: 11,
       // pos = index of the cluster's first word in `words` above — used to
@@ -140,6 +167,8 @@ const VFT_DATA = {
       words: ["koira", "kissa", "hevonen", "hämähäkki", "kärpänen", "käärme", "ankerias", "hevonen", "lehmä", "vasikka", "sika", "kana", "kirjosieppo", "kuikka", "pelikaani", "joutsen", "varpunen", "hamsteri", "rotta", "hiiri", "orava"],
       totalScore: 20,
       errors: [{ word: "hevonen", type: "Repetition — non-sequential", note: "Scored 0 for total score, but counted in its cluster (see \"hevonen (error)\" below)." }],
+      // Index in `words` of each error — here the 2nd "hevonen", not the 1st.
+      errorIndices: [7],
       // Defaults (option "a" below) — used until a human resolves the flagged case.
       meanClusterSize: 3.0,
       switches: 8,

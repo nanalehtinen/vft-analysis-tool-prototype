@@ -9,6 +9,11 @@
     trialsReady: false,
   };
 
+  function goToTab(name) {
+    const target = document.querySelector('.tab[data-tab="' + name + '"]');
+    if (target) target.click();
+  }
+
   // --- Top-level tab switching -------------------------------------------
   const tabs = document.querySelectorAll(".tab");
   tabs.forEach((tab) => {
@@ -160,8 +165,9 @@
   const step7Input = document.getElementById("step7-input");
   const step7Review = document.getElementById("step7-review");
   const step7Results = document.getElementById("step7-results");
-  const reviewCasesContainer = document.getElementById("review-cases-container");
-
+  // Resolutions for ambiguous cases in the rule-based (phonemic) reading.
+  // Semantic ambiguity is no longer resolved this way — the rater scores the
+  // semantic reading themselves in step 8 — so in practice this stays empty.
   let reviewResolutions = {};
 
   let hasData = false;
@@ -203,126 +209,327 @@
     });
   }
 
+  // --- The scoring loop -----------------------------------------------------
+  // Steps 1-6 configure the study and run once. The batch is imported once in
+  // step 7. Scoring then loops per trial: score -> that trial's results ->
+  // next trial. After the last trial the flow ends at the group results,
+  // which is where the download lives.
+  const batch = {
+    count: 1,
+    current: 0,
+    scored: [], // scored[i] = that trial's cluster ranges, once scored
+  };
+
+  function showScoringScreen() {
+    renderReviewStep();
+    step7Input.hidden = true;
+    step7Review.hidden = false;
+    step7Results.hidden = true;
+  }
+
+  function showTrialResults() {
+    renderResults();
+    step7Input.hidden = true;
+    step7Review.hidden = true;
+    step7Results.hidden = false;
+  }
+
   if (btnCalculate) {
     btnCalculate.addEventListener("click", () => {
       if (!hasData) return;
-      renderReviewStep();
-      step7Input.hidden = true;
-      step7Review.hidden = false;
-      step7Results.hidden = true;
+      batch.count = state.trialMode === "multiple" ? state.trialCount : 1;
+      batch.current = 0;
+      batch.scored = [];
+      showScoringScreen();
     });
   }
 
   if (btnReviewBack) {
     btnReviewBack.addEventListener("click", () => {
-      step7Review.hidden = true;
-      step7Input.hidden = false;
+      // From the first trial, back means the import step; otherwise it means
+      // the previous trial's results, so a rater can revise what they scored.
+      if (batch.current === 0) {
+        step7Review.hidden = true;
+        step7Input.hidden = false;
+      } else {
+        batch.current -= 1;
+        showTrialResults();
+      }
     });
   }
 
   if (btnContinueToResults) {
     btnContinueToResults.addEventListener("click", () => {
       if (btnContinueToResults.disabled) return;
-      renderResults();
-      step7Review.hidden = true;
-      step7Results.hidden = false;
+      batch.scored[batch.current] = manualClusters.map((c) => ({ s: c.s, e: c.e }));
+      showTrialResults();
     });
   }
 
+  // "Back to scoring" — revise the trial currently on screen.
   if (btnEditInputs) {
-    btnEditInputs.addEventListener("click", () => {
-      step7Results.hidden = true;
-      step7Input.hidden = false;
+    btnEditInputs.addEventListener("click", showScoringScreen);
+  }
+
+  const btnNextTrial = document.getElementById("btn-next-trial");
+  if (btnNextTrial) {
+    btnNextTrial.addEventListener("click", () => {
+      if (batch.current < batch.count - 1) {
+        batch.current += 1;
+        showScoringScreen();
+      } else {
+        renderGroupResults();
+        goToTab("results");
+      }
     });
   }
 
-  // --- Step 7: ambiguous-case review screen ---------------------------------
-  // Builds the continuous, trial-order word row for a flagged case, with the
-  // ambiguous words highlighted inline (rather than pulled into a separate
-  // card) so it reads like a transcript, not a fragmented UI.
-  function buildContextSequence(trial, c) {
-    const WINDOW = 6;
-    const startIdx = c.pos;
-    const endIdx = c.pos + c.words.length;
+  // --- Step 8: manual semantic clustering -----------------------------------
+  // Semantic clustering is scored by the rater, not by the tool. The rater
+  // drags across adjacent words to define each cluster; because clusters are
+  // always contiguous runs, this cannot produce an invalid scoring (no
+  // overlaps, no gaps, every word accounted for).
+  //
+  // Which reading this applies to depends on the task type: in a phonemic
+  // trial the semantic reading is the task-discrepant one, in a semantic
+  // trial it is the task-congruent one. Either way there is exactly one
+  // manual pass per trial; the phonemic reading stays rule-based.
 
-    const beforeAll = trial.words.slice(0, startIdx);
-    const before = beforeAll.slice(-WINDOW);
-    const beforeSegment = before.length ? (beforeAll.length > WINDOW ? "… " : "") + before.join(", ") + ", " : "";
+  // The rater's clusters, as {s, e} index ranges into the trial's `words`.
+  let manualClusters = [];
+  let manualDrag = null;
 
-    const afterAll = trial.words.slice(endIdx);
-    const after = afterAll.slice(0, WINDOW);
-    const afterSegment = after.length ? ", " + after.join(", ") + (afterAll.length > WINDOW ? " …" : "") : "";
+  const semanticTxEl = document.getElementById("semantic-tx");
+  const semanticLiveEl = document.getElementById("semantic-live");
+  const semanticLabelEl = document.getElementById("semantic-reading-label");
+  const trialProgressScoringEl = document.getElementById("trial-progress-scoring");
+  const cheatsheetListEl = document.getElementById("cheatsheet-list");
+  const btnSemanticClear = document.getElementById("btn-semantic-clear");
+  const btnSemanticExample = document.getElementById("btn-semantic-example");
 
-    return beforeSegment + '<mark class="review-highlight">' + c.words.join(", ") + "</mark>" + afterSegment;
+  function semanticIsCongruent(type) {
+    return type === "svf";
+  }
+
+  function currentTrial() {
+    return VFT_DATA.results[state.taskType || "pvf"];
+  }
+
+  function clusterIndexAt(i) {
+    for (let k = 0; k < manualClusters.length; k++) {
+      if (i >= manualClusters[k].s && i <= manualClusters[k].e) return k;
+    }
+    return -1;
+  }
+
+  function addManualCluster(s, e) {
+    // A new selection absorbs any cluster it touches, so ranges stay disjoint.
+    manualClusters = manualClusters.filter((c) => c.e < s || c.s > e);
+    manualClusters.push({ s, e });
+    manualClusters.sort((a, b) => a.s - b.s);
+  }
+
+  // Turns the rater's ranges into the same shape the results renderer expects
+  // from a rule-based reading, deriving the metrics from the runs.
+  function buildManualReading(trial, ranges) {
+    const errorIdx = trial.errorIndices || [];
+    const covered = new Set();
+
+    const clusters = ranges
+      .slice()
+      .sort((a, b) => a.s - b.s)
+      .map((rg) => {
+        const words = [];
+        const errorFlags = [];
+        for (let i = rg.s; i <= rg.e; i++) {
+          covered.add(i);
+          words.push(trial.words[i]);
+          errorFlags.push(errorIdx.indexOf(i) !== -1);
+        }
+        return {
+          pos: rg.s,
+          words,
+          errorFlags,
+          rule: "Semantic cluster — manually scored",
+          reviewStatus: "manual",
+        };
+      });
+
+    const nonClustering = [];
+    trial.words.forEach((w, i) => {
+      if (!covered.has(i)) nonClustering.push({ pos: i, word: w, reviewStatus: "manual" });
+    });
+
+    const rows = [
+      ...clusters.map((c) => ({ kind: "cluster", pos: c.pos, ...c })),
+      ...nonClustering.map((n) => ({ kind: "single", pos: n.pos, word: n.word, reviewStatus: "manual" })),
+    ].sort((a, b) => a.pos - b.pos);
+
+    const inClusters = clusters.reduce((a, c) => a + c.words.length, 0);
+    const meanClusterSize = clusters.length ? Math.round((inClusters / clusters.length) * 10) / 10 : 0;
+    // A switch is any transition between words not in the same cluster,
+    // single-word transitions included — i.e. one less than the number of runs.
+    const switches = Math.max(clusters.length + nonClustering.length - 1, 0);
+
+    return { clusters, nonClustering, rows, meanClusterSize, switches, count: clusters.length };
+  }
+
+  function renderSemanticTranscript() {
+    const trial = currentTrial();
+    if (!trial || !semanticTxEl) return;
+    const errorIdx = trial.errorIndices || [];
+
+    const dragLo = manualDrag ? Math.min(manualDrag.anchor, manualDrag.cur) : -1;
+    const dragHi = manualDrag ? Math.max(manualDrag.anchor, manualDrag.cur) : -2;
+
+    semanticTxEl.innerHTML = "";
+    trial.words.forEach((w, i) => {
+      const ci = clusterIndexAt(i);
+      const chip = document.createElement("span");
+      const cls = ["semantic-word"];
+
+      if (i >= dragLo && i <= dragHi) {
+        cls.push("in-drag");
+      } else if (ci !== -1) {
+        cls.push("in-cluster");
+        const c = manualClusters[ci];
+        if (i === c.s) cls.push("at-start");
+        else if (i === c.e) cls.push("at-end");
+        else cls.push("at-mid");
+      }
+
+      chip.className = cls.join(" ");
+      chip.dataset.i = i;
+      chip.innerHTML = w + (errorIdx.indexOf(i) !== -1 ? ' <span class="err">(error)</span>' : "");
+      semanticTxEl.appendChild(chip);
+
+      if (i < trial.words.length - 1) {
+        const sep = document.createElement("span");
+        const sameCluster = ci !== -1 && ci === clusterIndexAt(i + 1);
+        sep.className = "semantic-sep" + (sameCluster ? " inside" : "");
+        semanticTxEl.appendChild(sep);
+      }
+    });
+  }
+
+  function renderSemanticLive() {
+    const trial = currentTrial();
+    if (!trial || !semanticLiveEl) return;
+    const reading = buildManualReading(trial, manualClusters);
+    semanticLiveEl.innerHTML = reading.clusters.length
+      ? `<strong>${reading.clusters.length}</strong> clusters · mean size <strong>${reading.meanClusterSize.toFixed(1)}</strong> · <strong>${reading.switches}</strong> switches · <strong>${reading.nonClustering.length}</strong> non-clustering words`
+      : "Nothing grouped yet — every word currently counts as a non-clustering single word.";
+  }
+
+  function refreshSemanticStep() {
+    renderSemanticTranscript();
+    renderSemanticLive();
   }
 
   function renderReviewStep() {
-    reviewResolutions = {};
     const type = state.taskType || "pvf";
-    const trial = VFT_DATA.results[type];
-    const congruentLabel = type === "pvf" ? "Phonemic clustering" : "Semantic clustering";
-    const discrepantLabel = type === "pvf" ? "Task-discrepant (semantic) clustering" : "Task-discrepant (phonemic) clustering";
+    // Reload whatever this trial was scored as before, so going back to a
+    // trial shows the rater's own work rather than a blank slate.
+    const saved = batch.scored[batch.current];
+    manualClusters = saved ? saved.map((c) => ({ s: c.s, e: c.e })) : [];
+    manualDrag = null;
 
-    const cases = [
-      ...((trial && trial.ambiguousCases) || []).map((c) => ({ ...c, analysisLabel: c.analysisLabel || congruentLabel })),
-      ...((trial && trial.taskDiscrepant && trial.taskDiscrepant.ambiguousCases) || []).map((c) => ({ ...c, analysisLabel: c.analysisLabel || discrepantLabel })),
-    ];
-
-    if (cases.length === 0) {
-      reviewCasesContainer.innerHTML = `
-        <div class="review-empty-state">
-          <span class="review-empty-icon">✓</span>
-          <p class="review-empty-title">All clusters resolved within scoring parameters</p>
-          <p class="review-empty-desc">No cases were flagged for review in this trial.</p>
-        </div>
-      `;
-      btnContinueToResults.disabled = false;
-      return;
+    if (trialProgressScoringEl) {
+      trialProgressScoringEl.hidden = batch.count < 2;
+      trialProgressScoringEl.textContent = "Trial " + (batch.current + 1) + " of " + batch.count;
     }
 
-    btnContinueToResults.disabled = true;
+    if (semanticLabelEl) {
+      semanticLabelEl.textContent = semanticIsCongruent(type)
+        ? "Semantic clustering — task-congruent"
+        : "Semantic clustering — task-discrepant, within a phonemic trial";
+    }
 
-    reviewCasesContainer.innerHTML = cases
-      .map(
-        (c) => `
-          <div class="review-case-card" data-case-id="${c.id}">
-            <span class="review-analysis-label">${c.analysisLabel}</span>
-            <p class="review-sequence">${buildContextSequence(trial, c)}</p>
-            <div class="review-options">
-              ${c.options
-                .map(
-                  (opt) => `
-                    <button type="button" class="review-option-card" data-case-id="${c.id}" data-option-id="${opt.id}">
-                      <span class="review-option-title">${opt.label}</span>
-                      <span class="review-option-desc">${opt.description}</span>
-                    </button>
-                  `
-                )
-                .join("")}
-            </div>
-          </div>
-        `
-      )
-      .join("");
+    if (cheatsheetListEl && !cheatsheetListEl.childElementCount) {
+      cheatsheetListEl.innerHTML = (VFT_DATA.semanticRules || [])
+        .map((r) => `<li><span class="cheatsheet-rule">${r.n}</span><strong>${r.t}.</strong> ${r.d}</li>`)
+        .join("");
+    }
 
-    reviewCasesContainer.querySelectorAll(".review-option-card").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const caseId = btn.dataset.caseId;
-        reviewCasesContainer.querySelectorAll('.review-option-card[data-case-id="' + caseId + '"]').forEach((b) => b.classList.remove("is-selected"));
-        btn.classList.add("is-selected");
-        reviewResolutions[caseId] = btn.dataset.optionId;
-        btnContinueToResults.disabled = cases.some((c) => !reviewResolutions[c.id]);
-      });
+    // The rater may legitimately find no clusters at all, so continuing is
+    // never blocked.
+    btnContinueToResults.disabled = false;
+    refreshSemanticStep();
+  }
+
+  if (semanticTxEl) {
+    semanticTxEl.addEventListener("mousedown", (e) => {
+      const chip = e.target.closest(".semantic-word");
+      if (!chip) return;
+      e.preventDefault();
+      manualDrag = { anchor: +chip.dataset.i, cur: +chip.dataset.i };
+      renderSemanticTranscript();
+    });
+
+    semanticTxEl.addEventListener("mouseover", (e) => {
+      if (!manualDrag) return;
+      const chip = e.target.closest(".semantic-word");
+      if (!chip) return;
+      manualDrag.cur = +chip.dataset.i;
+      renderSemanticTranscript();
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (!manualDrag) return;
+      const lo = Math.min(manualDrag.anchor, manualDrag.cur);
+      const hi = Math.max(manualDrag.anchor, manualDrag.cur);
+      if (hi > lo) {
+        addManualCluster(lo, hi);
+      } else {
+        // A plain click dissolves the cluster under it.
+        const ci = clusterIndexAt(lo);
+        if (ci !== -1) manualClusters.splice(ci, 1);
+      }
+      manualDrag = null;
+      refreshSemanticStep();
     });
   }
 
-  // Merges a reading's base (unambiguous) clusters with the human's resolved
-  // choice for each flagged case in that same reading. If a case has no
-  // resolution yet (e.g. the standalone Preview tab, which never runs the
-  // review step), its first listed option is used as a stand-in, tagged
-  // "flagged" rather than "reviewed". Shared by both the task-congruent
-  // reading (main clustering) and the task-discrepant reading (cross-domain
-  // clusters), which are scored and reviewed independently per the manual.
+  if (btnSemanticClear) {
+    btnSemanticClear.addEventListener("click", () => {
+      manualClusters = [];
+      refreshSemanticStep();
+    });
+  }
+
+  if (btnSemanticExample) {
+    btnSemanticExample.addEventListener("click", () => {
+      const ranges = (VFT_DATA.semanticScoring || {})[state.taskType || "pvf"] || [];
+      manualClusters = ranges.map((p) => ({ s: p[0], e: p[1] }));
+      refreshSemanticStep();
+    });
+  }
+
+  // Manually scored clusters carry `errorFlags` aligned to `words`, which is
+  // exact even when the same word occurs twice in one cluster. Rule-based
+  // clusters from the manual's worked examples still match by word.
+  // True for anything a human decided: a resolved ambiguous case, or a row
+  // from the manually scored semantic reading.
+  function isHumanScored(row) {
+    return row.reviewStatus === "reviewed" || row.reviewStatus === "manual";
+  }
+
+  function isErrorWord(row, word, wordIndex) {
+    if (row.errorFlags) return !!row.errorFlags[wordIndex];
+    return !!(row.errorWords && row.errorWords.indexOf(word) !== -1);
+  }
+
+  // The error words in a cluster row, whichever of the two shapes it carries.
+  function errorWordsOf(row) {
+    if (!row.words) return [];
+    return row.words.filter((w, i) => isErrorWord(row, w, i));
+  }
+
+  // Merges a rule-based reading's clusters with the human's resolved choice
+  // for any flagged case in that same reading. If a case has no resolution,
+  // its first listed option stands in, tagged "flagged" rather than
+  // "reviewed". Used for whichever reading is the phonemic one — the semantic
+  // reading is scored by hand in step 8 instead.
   function resolveClusterReading(base, resolutions) {
     const cases = base.ambiguousCases || [];
     const clusters = base.clusters.map((c) => ({ ...c }));
@@ -357,46 +564,94 @@
     return { clusters, nonClustering, rows, meanClusterSize, switches, count };
   }
 
-  function getResolvedResult(type, resolutions) {
+  // `manualRanges`, when given, replaces whichever reading is the semantic one
+  // for this task type with the rater's own scoring. The other reading stays
+  // rule-based.
+  function getResolvedResult(type, resolutions, manualRanges) {
     const r = VFT_DATA.results[type];
     if (!r) return null;
-    const congruent = resolveClusterReading(r, resolutions);
-    const discrepant = r.taskDiscrepant ? resolveClusterReading(r.taskDiscrepant, resolutions) : null;
-    return { ...r, ...congruent, taskDiscrepant: discrepant };
+
+    let congruent, discrepant;
+    if (manualRanges) {
+      const manual = buildManualReading(r, manualRanges);
+      if (semanticIsCongruent(type)) {
+        congruent = manual;
+        discrepant = r.taskDiscrepant ? resolveClusterReading(r.taskDiscrepant, resolutions) : null;
+      } else {
+        congruent = resolveClusterReading(r, resolutions);
+        discrepant = manual;
+      }
+    } else {
+      congruent = resolveClusterReading(r, resolutions);
+      discrepant = r.taskDiscrepant ? resolveClusterReading(r.taskDiscrepant, resolutions) : null;
+    }
+
+    return { ...r, ...congruent, taskDiscrepant: discrepant, semanticIsCongruent: semanticIsCongruent(type) };
   }
 
-  // Generic results renderer — takes a set of target elements and options,
-  // shared by the Start Here wizard's results step and the standalone
-  // Preview tab (which has no wizard state of its own).
+  // Cluster-row rendering, shared by the per-trial results block and the
+  // per-trial detail rows in the group view.
+
+  // Manually scored clusters carry no per-row badge — the whole reading is
+  // the rater's work, so it is stated once on the table instead.
+  function reviewBadge(status) {
+    if (status === "reviewed") {
+      return '<span class="cluster-review-badge is-reviewed" title="Resolved by a human reviewer in the review step">Manually reviewed</span>';
+    }
+    if (status === "flagged") {
+      return '<span class="cluster-review-badge is-flagged" title="The manual lists more than one valid reading for this cluster">Flagged for review</span>';
+    }
+    return "";
+  }
+
+  function renderClusterRows(rows) {
+    return rows
+      .map((row) => {
+        if (row.kind === "single") {
+          return `
+            <tr class="cluster-row-single">
+              <td class="cluster-words">${row.word}${reviewBadge(row.reviewStatus)}</td>
+              <td><span class="cluster-size-badge is-single">—</span></td>
+              <td>Non-clustering single word</td>
+            </tr>
+          `;
+        }
+        const wordList = row.words.map((w, wi) => (isErrorWord(row, w, wi) ? w + " (error)" : w)).join(", ");
+        return `
+          <tr>
+            <td class="cluster-words">${wordList}${reviewBadge(row.reviewStatus)}</td>
+            <td><span class="cluster-size-badge">${row.words.length}</span></td>
+            <td>${row.rule}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  const MANUAL_SCORED_NOTE = "Semantic clustering — scored manually by the rater.";
+
+  // Renders one trial's results into a set of target elements. Group-level
+  // aggregation is a separate view, so this is always a single trial.
   function renderResultsInto(els, opts) {
     const type = opts.type || "pvf";
-    const r = getResolvedResult(type, opts.resolutions || {});
+    const r = getResolvedResult(type, opts.resolutions || {}, opts.manualRanges);
     if (!r) return;
 
-    const isBatch = !!opts.isBatch;
-    const trialCount = opts.trialCount || 30;
+    els.badge.textContent = opts.badgeText || r.trialLabel;
 
-    els.badge.textContent = isBatch ? "Group result — N=" + trialCount + " · " + r.trialLabel : r.trialLabel;
-
-    // The Preview tab carries this note in its own intro, above the toggles,
-    // so it has no note element here.
     if (els.note) {
-      els.note.textContent = isBatch
-        ? "Based on the manual's published worked example (Finnish source data, shown regardless of your selected data language, to demonstrate the scoring mechanism). In a real run, these values would be averaged across all " +
-          trialCount +
-          " trials in this batch — all responses to this one prompt, from one participant group."
-        : "Based on the manual's published worked example (Finnish source data, shown regardless of your selected data language, to demonstrate the scoring mechanism).";
+      els.note.textContent = "Based on the manual's published worked example.";
     }
 
     const hasAudio = !!opts.hasAudio;
-    const statPrefix = isBatch ? "Mean " : "";
     const stats = [
-      { value: r.totalScore, label: statPrefix + "Total score" },
-      { value: r.errors.length, label: statPrefix + "Errors" },
+      { value: r.totalScore, label: "Total score" },
+      { value: r.errors.length, label: "Errors" },
       { value: hasAudio ? "—" : "N/A", label: "Temporal parameters", unavailable: !hasAudio },
-      { value: r.meanClusterSize, label: type === "pvf" ? "Mean phonemic cluster size" : "Mean semantic cluster size" },
-      { value: r.switches, label: statPrefix + "Number of switches" },
-      { value: r.taskDiscrepant ? r.taskDiscrepant.count : "N/A", label: statPrefix + "Task discrepant clusters" },
+      // Always one decimal, so it reads the same here as on the scoring screen.
+      { value: Number(r.meanClusterSize).toFixed(1), label: type === "pvf" ? "Mean phonemic cluster size" : "Mean semantic cluster size" },
+      { value: r.switches, label: "Number of switches" },
+      { value: r.taskDiscrepant ? r.taskDiscrepant.count : "N/A", label: "Task discrepant clusters" },
     ];
     els.statGrid.innerHTML = stats
       .map(
@@ -409,56 +664,18 @@
       )
       .join("");
 
-    if (els.clusterHeading) {
-      els.clusterHeading.textContent = isBatch ? "Example task-congruent clusters (one representative trial from the batch)" : "Task-congruent clusters";
-    }
-    if (els.errorsHeading) {
-      els.errorsHeading.textContent = isBatch ? "Errors excluded from total score (same representative trial)" : "Errors excluded from total score";
-    }
-
-    function reviewBadge(status) {
-      if (status === "reviewed") {
-        return '<span class="cluster-review-badge is-reviewed" title="Resolved by a human reviewer in the review step">Manually reviewed</span>';
-      }
-      if (status === "flagged") {
-        return '<span class="cluster-review-badge is-flagged" title="The manual lists more than one valid reading for this cluster — resolved via the full workflow\'s review step">Flagged for review</span>';
-      }
-      return "";
-    }
-
-    function renderRows(rows) {
-      return rows
-        .map((row) => {
-          if (row.kind === "single") {
-            return `
-              <tr class="cluster-row-single">
-                <td class="cluster-words">${row.word}${reviewBadge(row.reviewStatus)}</td>
-                <td><span class="cluster-size-badge is-single">—</span></td>
-                <td>Non-clustering single word</td>
-              </tr>
-            `;
-          }
-          const wordList = row.words.map((w) => (row.errorWords && row.errorWords.includes(w) ? w + " (error)" : w)).join(", ");
-          return `
-            <tr>
-              <td class="cluster-words">${wordList}${reviewBadge(row.reviewStatus)}</td>
-              <td><span class="cluster-size-badge">${row.words.length}</span></td>
-              <td>${row.rule}</td>
-            </tr>
-          `;
-        })
-        .join("");
-    }
-
-    els.clusterBody.innerHTML = renderRows(r.rows);
-
+    els.clusterBody.innerHTML = renderClusterRows(r.rows);
     if (els.discrepantBody && r.taskDiscrepant) {
-      els.discrepantBody.innerHTML = renderRows(r.taskDiscrepant.rows);
+      els.discrepantBody.innerHTML = renderClusterRows(r.taskDiscrepant.rows);
     }
-    if (els.discrepantHeading) {
-      els.discrepantHeading.textContent = isBatch
-        ? "Task-discrepant clusters (same representative trial)"
-        : "Task-discrepant clusters";
+
+    if (els.clusterManualNote) {
+      els.clusterManualNote.textContent = r.semanticIsCongruent ? MANUAL_SCORED_NOTE : "";
+      els.clusterManualNote.hidden = !r.semanticIsCongruent;
+    }
+    if (els.discrepantManualNote) {
+      els.discrepantManualNote.textContent = r.semanticIsCongruent ? "" : MANUAL_SCORED_NOTE;
+      els.discrepantManualNote.hidden = !!r.semanticIsCongruent;
     }
 
     els.errorList.innerHTML = r.errors.map((e) => `<li><strong>${e.word}</strong> — ${e.type}. ${e.note}</li>`).join("");
@@ -475,16 +692,42 @@
     discrepantHeading: document.getElementById("discrepant-heading"),
     discrepantBody: document.getElementById("discrepant-table-body"),
     errorList: document.getElementById("error-list"),
+    clusterManualNote: document.getElementById("cluster-manual-note"),
+    discrepantManualNote: document.getElementById("discrepant-manual-note"),
   };
 
   function renderResults() {
+    const type = state.taskType || "pvf";
+    const isLast = batch.current >= batch.count - 1;
+    const ranges = batch.scored[batch.current] || [];
+
     renderResultsInto(step7Els, {
-      type: state.taskType || "pvf",
-      isBatch: state.trialMode === "multiple",
-      trialCount: state.trialCount,
+      type: type,
       hasAudio: state.mediaType === "voice",
       resolutions: reviewResolutions,
+      manualRanges: ranges,
+      badgeText:
+        batch.count > 1
+          ? "Trial " + (batch.current + 1) + " of " + batch.count + " · " + VFT_DATA.results[type].trialLabel
+          : VFT_DATA.results[type].trialLabel,
     });
+
+    const progress = document.getElementById("trial-progress-results");
+    if (progress) {
+      progress.textContent = batch.count > 1 ? "Trial " + (batch.current + 1) + " of " + batch.count : "";
+    }
+
+    const nextLabel = document.getElementById("next-trial-label");
+    if (nextLabel) {
+      nextLabel.textContent = isLast ? "View group results" : "Next trial";
+    }
+
+    const note = document.getElementById("trial-results-note");
+    if (note) {
+      note.textContent = isLast
+        ? "This is the last trial in the batch. Group-level statistics and the download are on the next screen."
+        : "Scoring for this trial is saved. The download is available once every trial in the batch has been scored.";
+    }
   }
 
   // --- Step 7: download results as CSV or JSON ------------------------------
@@ -492,6 +735,13 @@
   // (CSV vs JSON structure, what a "report" even means for this tool — raw
   // per-trial data vs. a formatted summary) is still undefined. Revisit
   // whether this is needed at all before building further on it.
+  // The instruction the researcher actually gave the participant, captured in
+  // step 3 and carried into the export for traceability. `trialLabel` is a
+  // short descriptor of the trial and is exported separately.
+  function promptText() {
+    return state.taskPrompt || "";
+  }
+
   function csvEscape(value) {
     const str = String(value);
     return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
@@ -511,10 +761,11 @@
 
   function buildResultsCSV() {
     const type = state.taskType || "pvf";
-    const r = getResolvedResult(type, reviewResolutions);
+    const r = getResolvedResult(type, reviewResolutions, manualClusters);
     const header = [
       "trial_id",
       "task_type",
+      "trial_label",
       "prompt",
       "total_score",
       "errors_count",
@@ -535,15 +786,16 @@
         const isSingle = row.kind === "single";
         const wordsText = isSingle
           ? row.word
-          : row.words.map((w) => (row.errorWords && row.errorWords.includes(w) ? w + " (error)" : w)).join("; ");
+          : row.words.map((w, wi) => (isErrorWord(row, w, wi) ? w + " (error)" : w)).join("; ");
         lines.push(
           [
             1,
             type.toUpperCase(),
             csvEscape(r.trialLabel),
+            csvEscape(promptText()),
             r.totalScore,
             r.errors.length,
-            r.meanClusterSize,
+            Number(r.meanClusterSize).toFixed(1),
             r.switches,
             r.taskDiscrepant ? r.taskDiscrepant.count : "",
             reading,
@@ -551,7 +803,7 @@
             csvEscape(wordsText),
             isSingle ? "" : row.words.length,
             isSingle ? "Non-clustering single word" : csvEscape(row.rule),
-            row.reviewStatus === "reviewed" ? "TRUE" : "FALSE",
+            isHumanScored(row) ? "TRUE" : "FALSE",
           ].join(",")
         );
       });
@@ -565,18 +817,18 @@
 
   function buildResultsJSON() {
     const type = state.taskType || "pvf";
-    const r = getResolvedResult(type, reviewResolutions);
+    const r = getResolvedResult(type, reviewResolutions, manualClusters);
 
     function toSequence(rows) {
       return rows.map((row) =>
         row.kind === "single"
-          ? { type: "non_clustering_single_word", word: row.word, human_reviewed: row.reviewStatus === "reviewed" }
+          ? { type: "non_clustering_single_word", word: row.word, human_reviewed: isHumanScored(row) }
           : {
               type: "cluster",
               words: row.words,
-              error_word: row.errorWords && row.errorWords.length ? row.errorWords[0] : null,
+              error_word: errorWordsOf(row)[0] || null,
               rule: row.rule,
-              human_reviewed: row.reviewStatus === "reviewed",
+              human_reviewed: isHumanScored(row),
             }
       );
     }
@@ -585,10 +837,11 @@
       {
         trial_id: 1,
         task_type: type,
-        prompt: r.trialLabel,
+        trial_label: r.trialLabel,
+        prompt: promptText(),
         total_score: r.totalScore,
         errors: r.errors,
-        mean_cluster_size: r.meanClusterSize,
+        mean_cluster_size: Number(Number(r.meanClusterSize).toFixed(1)),
         number_of_switches: r.switches,
         // In true production order (matches the results table on screen).
         sequence_task_congruent: toSequence(r.rows),
@@ -619,66 +872,6 @@
       downloadFile("vft_results.json", buildResultsJSON(), "application/json");
     });
   }
-
-  // --- Preview tab results (self-contained, own toggle state) ---------------
-  const previewEls = {
-    badge: document.getElementById("preview-trial-badge"),
-    statGrid: document.getElementById("preview-stat-grid"),
-    clusterHeading: document.getElementById("preview-cluster-heading"),
-    errorsHeading: document.getElementById("preview-errors-heading"),
-    clusterBody: document.getElementById("preview-cluster-body"),
-    discrepantHeading: document.getElementById("preview-discrepant-heading"),
-    discrepantBody: document.getElementById("preview-discrepant-table-body"),
-    errorList: document.getElementById("preview-error-list"),
-  };
-
-  const previewState = { type: "pvf", view: "single" };
-
-  // The Preview tab has no wizard/review step of its own — it demonstrates a
-  // completed run, so every ambiguous case is shown resolved to its first
-  // option ("Manually reviewed") rather than "Flagged for review".
-  function buildAllReviewedResolutions(type) {
-    const r = VFT_DATA.results[type];
-    if (!r) return {};
-    const cases = [...(r.ambiguousCases || []), ...((r.taskDiscrepant && r.taskDiscrepant.ambiguousCases) || [])];
-    const resolutions = {};
-    cases.forEach((c) => {
-      resolutions[c.id] = c.options[0].id;
-    });
-    return resolutions;
-  }
-
-  function renderPreview() {
-    if (!previewEls.badge) return;
-    renderResultsInto(previewEls, {
-      type: previewState.type,
-      isBatch: previewState.view === "batch",
-      trialCount: 30,
-      hasAudio: false,
-      resolutions: buildAllReviewedResolutions(previewState.type),
-    });
-  }
-
-  document.querySelectorAll("#preview-type-toggle .segmented-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll("#preview-type-toggle .segmented-btn").forEach((b) => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-      previewState.type = btn.dataset.previewType;
-      renderPreview();
-    });
-  });
-
-  document.querySelectorAll("#preview-view-toggle .segmented-btn").forEach((btn) => {
-    if (btn.disabled) return;
-    btn.addEventListener("click", () => {
-      document.querySelectorAll("#preview-view-toggle .segmented-btn").forEach((b) => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-      previewState.view = btn.dataset.previewView;
-      renderPreview();
-    });
-  });
-
-  renderPreview();
 
   function updateStepValidity(stepEl) {
     if (!stepEl) return;
@@ -727,7 +920,7 @@
       help.textContent =
         "This batch has " +
         state.trialCount +
-        " trials, all responses to the prompt you shared, from one participant group. Drop the batch file below, or load the manual's worked example to preview how the group result will look.";
+        " trials, all responses to the prompt you shared, from one participant group. Import them all here — you will then score the semantic clustering one trial at a time.";
     } else {
       title.textContent = "Add your transcript";
       help.textContent = "Import a transcript file below.";
@@ -759,12 +952,150 @@
       .join("");
   }
 
+  // --- Group results --------------------------------------------------------
+  // The scalar metrics aggregate across trials; the cluster breakdown does
+  // not, since it is one participant's words in their own production order.
+  // So the group view summarises the scalars and keeps each trial's full
+  // breakdown available underneath, for auditing.
+  const groupEmptyEl = document.getElementById("group-empty");
+  const groupContentEl = document.getElementById("group-content");
+  const groupStatGridEl = document.getElementById("group-stat-grid");
+  const groupTrialBodyEl = document.getElementById("group-trial-body");
+  const groupBadgeEl = document.getElementById("group-trial-badge");
+  const groupProgressEl = document.getElementById("group-progress-note");
+
+  function mean(values) {
+    return values.reduce((a, v) => a + v, 0) / values.length;
+  }
+
+  // Sample SD (n-1), which is what gets reported for a participant group.
+  function stdDev(values) {
+    if (values.length < 2) return null;
+    const m = mean(values);
+    return Math.sqrt(values.reduce((a, v) => a + (v - m) * (v - m), 0) / (values.length - 1));
+  }
+
+  function fmt(n, dp) {
+    return Number(n).toFixed(dp === undefined ? 1 : dp);
+  }
+
+  function scoredTrials() {
+    const type = state.taskType || "pvf";
+    const out = [];
+    batch.scored.forEach((ranges, i) => {
+      if (!ranges) return;
+      out.push({ index: i, result: getResolvedResult(type, reviewResolutions, ranges) });
+    });
+    return out;
+  }
+
+  function renderGroupResults() {
+    if (!groupContentEl) return;
+    const trials = scoredTrials();
+
+    if (!trials.length) {
+      groupEmptyEl.hidden = false;
+      groupContentEl.hidden = true;
+      return;
+    }
+    groupEmptyEl.hidden = true;
+    groupContentEl.hidden = false;
+
+    const type = state.taskType || "pvf";
+    groupBadgeEl.textContent = VFT_DATA.results[type].trialLabel;
+    groupProgressEl.textContent =
+      trials.length === batch.count
+        ? "All " + batch.count + " trial" + (batch.count === 1 ? "" : "s") + " scored."
+        : trials.length + " of " + batch.count + " trials scored — these statistics are incomplete.";
+
+    const metrics = [
+      { label: "Total score", dp: 1, get: (r) => r.totalScore },
+      { label: "Errors", dp: 1, get: (r) => r.errors.length },
+      { label: type === "pvf" ? "Mean phonemic cluster size" : "Mean semantic cluster size", dp: 2, get: (r) => r.meanClusterSize },
+      { label: "Number of switches", dp: 1, get: (r) => r.switches },
+      { label: "Task discrepant clusters", dp: 1, get: (r) => (r.taskDiscrepant ? r.taskDiscrepant.count : 0) },
+    ];
+
+    groupStatGridEl.innerHTML = metrics
+      .map((metric) => {
+        const values = trials.map((t) => Number(metric.get(t.result)));
+        const sd = stdDev(values);
+        const lo = Math.min.apply(null, values);
+        const hi = Math.max.apply(null, values);
+        return `
+          <div class="group-stat">
+            <span class="group-stat-label">${metric.label}</span>
+            <span class="group-stat-value">${fmt(mean(values), metric.dp)}</span>
+            <span class="group-stat-meta">SD ${sd === null ? "—" : fmt(sd, 2)} · range ${fmt(lo, metric.dp)}–${fmt(hi, metric.dp)} · n = ${values.length}</span>
+          </div>
+        `;
+      })
+      .join("");
+
+    groupTrialBodyEl.innerHTML = trials
+      .map((t) => {
+        const r = t.result;
+        return `
+          <tr class="group-trial-row" data-trial="${t.index}" title="Show this trial's cluster breakdown">
+            <td><span class="group-trial-name">Trial ${t.index + 1}</span></td>
+            <td>${r.totalScore}</td>
+            <td>${r.errors.length}</td>
+            <td>${fmt(r.meanClusterSize)}</td>
+            <td>${r.switches}</td>
+            <td>${r.taskDiscrepant ? r.taskDiscrepant.count : "—"}</td>
+          </tr>
+          <tr class="group-detail-row" data-detail="${t.index}" hidden>
+            <td colspan="6">
+              <h4 class="group-detail-heading">Task-congruent clusters</h4>
+              ${r.semanticIsCongruent ? '<p class="manual-scored-note">' + MANUAL_SCORED_NOTE + "</p>" : ""}
+              <div class="cluster-table-wrap">
+                <table class="cluster-table">
+                  <thead><tr><th>Words</th><th>Size</th><th>Rule applied</th></tr></thead>
+                  <tbody>${renderClusterRows(r.rows)}</tbody>
+                </table>
+              </div>
+              <h4 class="group-detail-heading">Task-discrepant clusters</h4>
+              ${r.semanticIsCongruent ? "" : '<p class="manual-scored-note">' + MANUAL_SCORED_NOTE + "</p>"}
+              <div class="cluster-table-wrap">
+                <table class="cluster-table">
+                  <thead><tr><th>Words</th><th>Size</th><th>Rule applied</th></tr></thead>
+                  <tbody>${r.taskDiscrepant ? renderClusterRows(r.taskDiscrepant.rows) : ""}</tbody>
+                </table>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    groupTrialBodyEl.querySelectorAll(".group-trial-row").forEach((row) => {
+      row.addEventListener("click", () => {
+        const detail = groupTrialBodyEl.querySelector('.group-detail-row[data-detail="' + row.dataset.trial + '"]');
+        if (!detail) return;
+        detail.hidden = !detail.hidden;
+        row.classList.toggle("is-open", !detail.hidden);
+      });
+    });
+  }
+
+  const btnGroupBack = document.getElementById("btn-group-back");
+  if (btnGroupBack) {
+    btnGroupBack.addEventListener("click", () => goToTab("start"));
+  }
+
+  // Recompute whenever the tab is opened, so it reflects the latest scoring.
+  const resultsTab = document.querySelector('.tab[data-tab="results"]');
+  if (resultsTab) {
+    resultsTab.addEventListener("click", renderGroupResults);
+  }
+
+  renderGroupResults();
+
   // --- Inline links that jump to another top-level tab --------------------
   document.querySelectorAll("[data-goto-tab]").forEach((link) => {
     link.addEventListener("click", (e) => {
       e.preventDefault();
-      const target = document.querySelector('.tab[data-tab="' + link.dataset.gotoTab + '"]');
-      if (target) target.click();
+      goToTab(link.dataset.gotoTab);
     });
   });
 })();

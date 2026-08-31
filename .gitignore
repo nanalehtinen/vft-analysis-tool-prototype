@@ -1,2 +1,5 @@
 .DS_Store
 .claude/
+
+# Local design sketches — not part of the published prototype.
+_sketch-*.html
