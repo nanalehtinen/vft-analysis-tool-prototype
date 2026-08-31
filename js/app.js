@@ -561,16 +561,19 @@
   //   single trial -> VFT_DATA.results, transcribed from the published manual
   //   batch        -> VFT_DATA.illustrativeBatch, synthetic demo data
   // Only semantic trials have a synthetic batch; see step 6.
+  function syntheticSet() {
+    const lang = state.dataLanguage || "fi";
+    const byLang = VFT_DATA.illustrativeBatch && VFT_DATA.illustrativeBatch[lang];
+    return (byLang && byLang[state.taskType]) || null;
+  }
+
   function usingSyntheticBatch() {
-    return (
-      state.trialMode === "multiple" &&
-      state.taskType === "svf" &&
-      !!(VFT_DATA.illustrativeBatch && VFT_DATA.illustrativeBatch.svf)
-    );
+    return state.trialMode === "multiple" && !!syntheticSet();
   }
 
   function syntheticTrialCount() {
-    return VFT_DATA.illustrativeBatch.svf.length;
+    const set = syntheticSet();
+    return set ? set.length : 0;
   }
 
   // The phonemic reading is deterministic, so it is computed rather than
@@ -620,7 +623,7 @@
   }
 
   function syntheticTrial(index) {
-    const src = VFT_DATA.illustrativeBatch.svf[index];
+    const src = syntheticSet()[index];
     return {
       trialLabel: "Semantic (SVF) — category Animals",
       synthetic: true,
@@ -1040,6 +1043,7 @@
       li.classList.toggle("is-current", step === n);
       li.classList.toggle("is-done", step < n);
     });
+    if (n === 2) updateTaskTypeAvailability();
     if (n === 3) updatePromptExampleUI();
     if (n === 5) renderValueChecklist();
     if (n === 6) updateTrialModeAvailability();
@@ -1049,22 +1053,46 @@
   // --- Step 6: batch is only offered where a demo batch exists -------------
   // The synthetic batch covers semantic trials only, so a phonemic batch
   // would just repeat one worked example and report SD = 0 on every metric.
-  function updateTrialModeAvailability() {
-    const card = document.querySelector('.choice-grid[data-field="trialMode"] .choice-card[data-value="multiple"]');
+  function setCardAvailable(card, allowed, noteClass) {
     if (!card) return;
-    const allowed = state.taskType === "svf";
-    const note = card.querySelector(".trial-mode-note");
-
+    const note = card.querySelector("." + noteClass);
     card.disabled = !allowed;
     card.classList.toggle("is-disabled", !allowed);
     if (note) note.hidden = allowed;
+    if (!allowed) card.classList.remove("is-selected");
+  }
 
-    if (!allowed && state.trialMode === "multiple") {
+  function updateTrialModeAvailability() {
+    const grid = document.querySelector('.choice-grid[data-field="trialMode"]');
+    if (!grid) return;
+
+    // A batch needs demo trials behind it; the single-trial path is the
+    // manual's published worked example, which exists in Finnish only.
+    const batchAllowed = !!(VFT_DATA.illustrativeBatch[state.dataLanguage || "fi"] || {})[state.taskType];
+    const singleAllowed = (state.dataLanguage || "fi") === "fi";
+
+    const batchCard = grid.querySelector('.choice-card[data-value="multiple"]');
+    const singleCard = grid.querySelector('.choice-card[data-value="single"]');
+    setCardAvailable(batchCard, batchAllowed, "trial-mode-note");
+    setCardAvailable(singleCard, singleAllowed, "trial-mode-note");
+
+    if ((!batchAllowed && state.trialMode === "multiple") || (!singleAllowed && state.trialMode === "single")) {
       state.trialMode = null;
-      card.classList.remove("is-selected");
       document.getElementById("trial-count-row").hidden = true;
-      recomputeTrialsReady();
     }
+    recomputeTrialsReady();
+  }
+
+  // Phonemic trials have no demo batch, and the published worked example is
+  // Finnish — so under English there is nothing behind a phonemic trial.
+  function updateTaskTypeAvailability() {
+    const grid = document.querySelector('.choice-grid[data-field="taskType"]');
+    if (!grid) return;
+    const allowed = (state.dataLanguage || "fi") === "fi";
+    const card = grid.querySelector('.choice-card[data-value="pvf"]');
+    setCardAvailable(card, allowed, "task-type-note");
+    if (!allowed && state.taskType === "pvf") state.taskType = null;
+    updateStepValidity(grid.closest(".step"));
   }
 
   // --- Step 7: adjust copy for single trial vs. batch ----------------------

@@ -77,13 +77,24 @@ const VFT_DATA = {
   // the published manual. The two are never mixed.
   // ---------------------------------------------------------------------
   illustrativeBatch: {
-    svf: [
-      { words: ["virtahepo", "norsu", "seepra", "kani", "leijona", "koira", "delfiini", "hylje", "mursu", "valas", "ilves", "peura", "mäyrä", "hirvi", "kettu"], errorIndices: [], totalScore: 15 },
-      { words: ["lehmä", "käärme", "sammakko", "sisilisko", "perhonen", "ilves", "ahma", "kuha", "lohi", "silakka", "ahven", "krokotiili", "kotka", "haukka", "merikotka", "kanahaukka", "tiikeri", "apina", "krokotiili", "hamsteri", "marsu", "kissa", "koira", "perhonen", "mehiläinen", "kärpänen", "ampiainen", "kettu"], errorIndices: [18, 23], totalScore: 26 },
-      { words: ["hanhi", "kuikka", "joutsen", "krokotiili", "seepra", "pöllö", "peippo", "kotka", "sorsa", "kotka", "kanahaukka", "haukka", "varis", "käki", "muurahainen", "kärpänen", "koira", "kani", "kissa"], errorIndices: [9], totalScore: 18 },
-      { words: ["seepra", "ampiainen", "perhonen", "hyttynen", "ahven", "silakka", "marsu", "merikotka", "kotka", "kanahaukka", "haukka", "krokotiili", "susi", "jänis", "peura", "kirahvi", "apina", "seepra", "ilves", "ahma", "susi", "sammakko", "kilpikonna"], errorIndices: [17, 20], totalScore: 21 },
-      { words: ["ampiainen", "hyttynen", "mehiläinen", "hevonen", "kukko", "sika", "kotka", "merikotka", "kanahaukka", "kani", "marsu", "undulaatti", "delfiini", "haukka"], errorIndices: [], totalScore: 14 },
-    ],
+    fi: {
+      svf: [
+        { words: ["virtahepo", "norsu", "seepra", "kani", "leijona", "koira", "delfiini", "hylje", "mursu", "valas", "ilves", "peura", "mäyrä", "hirvi", "kettu"], errorIndices: [], totalScore: 15 },
+        { words: ["lehmä", "käärme", "sammakko", "sisilisko", "perhonen", "ilves", "ahma", "kuha", "lohi", "silakka", "ahven", "krokotiili", "kotka", "haukka", "merikotka", "kanahaukka", "tiikeri", "apina", "krokotiili", "hamsteri", "marsu", "kissa", "koira", "perhonen", "mehiläinen", "kärpänen", "ampiainen", "kettu"], errorIndices: [18, 23], totalScore: 26 },
+        { words: ["hanhi", "kuikka", "joutsen", "krokotiili", "seepra", "pöllö", "peippo", "kotka", "sorsa", "kotka", "kanahaukka", "haukka", "varis", "käki", "muurahainen", "kärpänen", "koira", "kani", "kissa"], errorIndices: [9], totalScore: 18 },
+        { words: ["seepra", "ampiainen", "perhonen", "hyttynen", "ahven", "silakka", "marsu", "merikotka", "kotka", "kanahaukka", "haukka", "krokotiili", "susi", "jänis", "peura", "kirahvi", "apina", "seepra", "ilves", "ahma", "susi", "sammakko", "kilpikonna"], errorIndices: [17, 20], totalScore: 21 },
+        { words: ["ampiainen", "hyttynen", "mehiläinen", "hevonen", "kukko", "sika", "kotka", "merikotka", "kanahaukka", "kani", "marsu", "undulaatti", "delfiini", "haukka"], errorIndices: [], totalScore: 14 },
+      ],
+    },
+    en: {
+      svf: [
+        { words: ["owl", "blackbird", "seal", "turtle", "ant", "bee", "mosquito", "mouse", "vole", "duck", "swan", "goose", "seagull", "pelican"], errorIndices: [], totalScore: 14 },
+        { words: ["heron", "frog", "owl", "eel", "seagull", "otter", "bear", "lizard", "turtle", "pig", "dolphin", "wasp", "fox", "herring", "salmon", "eel"], errorIndices: [15], totalScore: 15 },
+        { words: ["heron", "swan", "monkey", "hawk", "eagle", "buzzard", "elephant", "snake", "frog", "mouse", "rat", "crocodile", "tiger", "monkey", "falcon", "pelican", "goose", "bee", "mosquito", "cat", "hippo", "elephant", "giraffe"], errorIndices: [13, 21], totalScore: 21 },
+        { words: ["mouse", "squirrel", "parrot", "horse", "crocodile", "blackbird", "pigeon", "robin", "dog", "cat", "hamster", "sparrow", "magpie", "crow", "owl", "woodpecker", "duck", "seagull", "ant", "butterfly", "wasp", "pike", "eel", "salmon", "trout"], errorIndices: [], totalScore: 25 },
+        { words: ["tiger", "rabbit", "mouse", "vole", "squirrel", "rat", "snake", "frog", "pig", "donkey", "horse", "sheep", "dolphin", "whale", "wasp", "butterfly", "ant", "walrus", "seal", "tiger", "monkey", "giraffe", "elephant", "mosquito", "bee", "fly", "crocodile", "goat"], errorIndices: [19], totalScore: 27 },
+      ],
+    },
   },
 
   // Step 7: canned results for the "Load example data" path, reproducing the

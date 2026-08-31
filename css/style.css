@@ -792,7 +792,8 @@ button { font-family: inherit; }
   color: var(--rose);
 }
 
-.trial-mode-note[hidden] { display: none; }
+.trial-mode-note[hidden],
+.task-type-note[hidden] { display: none; }
 
 /* --- Group results ------------------------------------------------------ */
 .group-stat-grid {

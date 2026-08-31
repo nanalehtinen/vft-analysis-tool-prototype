@@ -71,18 +71,16 @@
       <div class="step is-active" data-step="1" data-requires="dataLanguage">
         <div class="step-card">
           <h2 data-i18n="step1.title">Which language is your data in?</h2>
-          <p class="step-help" data-i18n="step1.help">This determines the scoring rules and reference vocabulary used for clustering.</p>
+          <p class="step-help" data-i18n="step1.help">This determines the scoring rules and reference vocabulary used for clustering. The English path shows the intended state at the end of the funding period; the published worked example is Finnish, so English is demonstrated with the synthetic batch.</p>
 
           <div class="choice-grid" data-field="dataLanguage">
             <button type="button" class="choice-card" data-value="fi">
               <span class="choice-title">Suomi</span>
               <span class="choice-sub">Finnish</span>
             </button>
-            <button type="button" class="choice-card is-disabled" data-value="en" disabled>
+            <button type="button" class="choice-card" data-value="en">
               <span class="choice-title">English</span>
-              <span class="choice-sub">
-                <span class="badge">Excluded from demo</span>
-              </span>
+              <span class="choice-sub">English</span>
             </button>
           </div>
         </div>
@@ -106,6 +104,7 @@
             <button type="button" class="choice-card" data-value="pvf">
               <span class="choice-title">Phonemic (PVF)</span>
               <span class="choice-sub">Words starting with a given letter, e.g. /k/</span>
+              <span class="choice-sub task-type-note" hidden>Demonstrated with Finnish data in this prototype.</span>
             </button>
             <button type="button" class="choice-card" data-value="svf">
               <span class="choice-title">Semantic (SVF)</span>
@@ -213,12 +212,13 @@
               <span class="choice-title">Single trial</span>
               <span class="choice-sub">One participant, one response</span>
               <span class="source-tag is-manual">Published worked example</span>
+              <span class="choice-sub trial-mode-note" hidden>The published worked example is Finnish.</span>
             </button>
             <button type="button" class="choice-card" data-value="multiple">
               <span class="choice-title">Batch</span>
               <span class="choice-sub">Multiple trials, one group, same prompt</span>
               <span class="source-tag is-synthetic">Synthetic demo data</span>
-              <span class="choice-sub trial-mode-note" hidden>Available for semantic trials only in this prototype.</span>
+              <span class="choice-sub trial-mode-note" hidden>Available for semantic trials in this prototype.</span>
             </button>
           </div>
 
@@ -470,12 +470,12 @@
         <h3 class="results-subheading guidance-first-heading">Workflow</h3>
         <p class="guidance-p">The <a href="#" class="inline-link" data-goto-tab="start">Start Here</a> tab runs a seven-step setup, then a scoring pass that repeats for every trial in the batch, ending at the group-level results:</p>
         <ol class="guidance-steps">
-          <li><span class="guidance-step-num">1</span><div><strong>Data language</strong><span>Determines the scoring rules and reference vocabulary used for clustering. Finnish is demonstrated in this prototype; English follows in a later phase.</span></div></li>
+          <li><span class="guidance-step-num">1</span><div><strong>Data language</strong><span>Determines the scoring rules and reference vocabulary used for clustering. Both Finnish and English are demonstrated here — the English path shows the intended state at the end of the funding period, since the validated English rule set is built during it. The interface itself is language-agnostic.</span></div></li>
           <li><span class="guidance-step-num">2</span><div><strong>Phonemic or semantic task</strong><span>Determines which clustering and switching rules apply to the transcript.</span></div></li>
           <li><span class="guidance-step-num">3</span><div><strong>Task prompt</strong><span>Paste the exact instruction you gave the participant. Studies using the manual's wording can select it directly.</span></div></li>
           <li><span class="guidance-step-num">4</span><div><strong>Voice recordings or transcripts</strong><span>Select the format to upload your data. Written transcripts are demonstrated in this prototype.</span></div></li>
           <li><span class="guidance-step-num">5</span><div><strong>Confirm analysis</strong><span>Review a checklist of the scored metrics for your chosen task type.</span></div></li>
-          <li><span class="guidance-step-num">6</span><div><strong>Number of trials</strong><span>Score a single trial, or a batch — multiple trials answering one prompt, from one participant group. Everything above this point is set once and applies to the whole batch.</span></div></li>
+          <li><span class="guidance-step-num">6</span><div><strong>Number of trials</strong><span>Score a single trial, or a batch — multiple trials answering one prompt, from one participant group. Everything above this point is set once and applies to the whole batch. The single-trial path uses the manual's published worked example, which is Finnish; batches use synthetic demo trials, in either language.</span></div></li>
           <li><span class="guidance-step-num">7</span><div><strong>Add your data</strong><span>Import your transcripts, or voice files. A whole batch is imported once, here. For demonstration purposes, you can load a published example.</span></div></li>
           <li><span class="guidance-step-num">8</span><div><strong>Score the semantic clustering</strong><span><em>Repeats for each trial.</em> Semantic clustering is scored by the researcher, not by the tool. The response is shown in production order, and you drag across a run of words to group them into a cluster; anything you leave alone is a non-clustering single word. Because clusters are always contiguous runs, an invalid scoring — overlapping clusters, skipped words — cannot be produced. Mean cluster size and switches are then derived from the runs you defined. In a semantic trial this is the task-congruent reading; in a phonemic trial it is the task-discrepant one. Either way the phonemic reading stays rule-based, and the scoring is recorded in the results and the export so it stays auditable.</span></div></li>
           <li><span class="guidance-step-num">9</span><div><strong>Check that trial's results</strong><span><em>Repeats for each trial.</em> The trial you just scored is shown in full — totals, errors, and both cluster breakdowns — so you can confirm the scoring before moving on. Continue to the next trial from here, or go back and revise. After the last trial this leads to the group results.</span></div></li>
@@ -507,7 +507,7 @@
         <ul class="guidance-defs">
           <li><strong>Specification.</strong> Formalize the published protocol into a computable ruleset, sorting each rule by whether it can be resolved by deterministic logic, needs a citable linguistic reference, needs a semantic-relatedness component, or requires a design solution rather than automation.</li>
           <li><strong>Core engine and interface (Finnish).</strong> Build the deterministic components and the scoring interface, verify the implementation against the dataset used in the doctoral dissertation, and revise the workflow based on usability testing with speech-language pathology researchers.</li>
-          <li><strong>English-language extension.</strong> Extend the deterministic components and interface to English, and validate against a subset of the existing immersed bilingual dataset scored independently by human raters.</li>
+          <li><strong>English-language extension.</strong> Extend the deterministic components and interface to English, and validate against a subset of the existing immersed bilingual dataset scored independently by human raters. The English path in this prototype demonstrates the intended end state of this phase; the validated English rule set is the work itself.</li>
           <li><strong>AI feasibility study.</strong> Evaluate whether locally deployed multilingual models can reliably support selected rule-application edge cases — benchmarked in English first, then Finnish. Semantic clustering is excluded. AI support is integrated only if the findings warrant it.</li>
           <li><strong>Publication.</strong> A peer-reviewed manuscript on the tool's development and bilingual (Finnish/English) validation.</li>
         </ul>
