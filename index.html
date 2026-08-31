@@ -212,17 +212,20 @@
             <button type="button" class="choice-card" data-value="single">
               <span class="choice-title">Single trial</span>
               <span class="choice-sub">One participant, one response</span>
+              <span class="source-tag is-manual">Published worked example</span>
             </button>
             <button type="button" class="choice-card" data-value="multiple">
               <span class="choice-title">Batch</span>
               <span class="choice-sub">Multiple trials, one group, same prompt</span>
+              <span class="source-tag is-synthetic">Synthetic demo data</span>
+              <span class="choice-sub trial-mode-note" hidden>Available for semantic trials only in this prototype.</span>
             </button>
           </div>
 
           <div class="trial-count-row" id="trial-count-row" hidden>
             <label for="trial-count-input" class="trial-count-label" data-i18n="step6.countLabel">Number of trials in this batch</label>
-            <input type="number" id="trial-count-input" class="trial-count-input" min="2" max="200" value="30">
-            <p class="trial-count-note" data-i18n="step6.note">Every trial in a batch must be a response to this exact same prompt, from participants in the same group (e.g. all bilinguals, or all monolinguals). Don't mix letters, categories, or groups within one batch — run a separate batch for each. The tool will calculate a group-level result for this prompt.</p>
+            <input type="number" id="trial-count-input" class="trial-count-input" min="2" max="5" value="5">
+            <p class="trial-count-note" data-i18n="step6.note">Every trial in a batch must be a response to this exact same prompt, from participants in the same group (e.g. all bilinguals, or all monolinguals). Don't mix letters, categories, or groups within one batch — run a separate batch for each. The tool will calculate a group-level result for this prompt. This prototype includes five synthetic trials, each of which you score yourself.</p>
           </div>
         </div>
 
@@ -243,6 +246,8 @@
             <h2 data-i18n="step7.title" id="step7-title">Add your transcript</h2>
             <p class="step-help" id="step7-help" data-i18n="step7.help">Import a transcript file below.</p>
 
+            <div class="provenance" id="provenance-input"></div>
+
             <label class="dropzone" id="dropzone" for="file-input">
               <span class="dropzone-icon" aria-hidden="true">↑</span>
               <span class="dropzone-text" id="dropzone-text" data-i18n="step7.dropText">Drag &amp; drop a transcript file here, or click to browse</span>
@@ -250,7 +255,7 @@
             </label>
 
             <button type="button" class="btn btn-tertiary" id="btn-load-example-data">
-              <span data-i18n="step7.loadExample">For demonstration purposes, load the manual's example transcript here.</span>
+              <span id="load-example-label">For demonstration purposes, load the manual's example transcript here.</span>
             </button>
           </div>
 
@@ -269,6 +274,7 @@
             <h2 data-i18n="step7.reviewTitle">Score the semantic clustering</h2>
             <p class="step-help" id="review-intro-note" data-i18n="step7.reviewHelp">Semantic clustering is scored by you, not by the tool. Below is the participant's response in the order they produced it. Drag across a run of words to group them into a cluster; click a grouped word to ungroup it. Words you leave alone are non-clustering single words.</p>
 
+            <div class="provenance" id="provenance-scoring"></div>
             <div class="trial-progress" id="trial-progress-scoring" hidden></div>
 
             <span class="review-analysis-label" id="semantic-reading-label"></span>
@@ -278,7 +284,7 @@
 
             <div class="semantic-tools">
               <button type="button" class="btn btn-secondary btn-compact" id="btn-semantic-clear">Clear all</button>
-              <button type="button" class="btn btn-secondary btn-compact" id="btn-semantic-example">Fill in the manual's scoring (demo shortcut)</button>
+
             </div>
 
             <div class="semantic-live" id="semantic-live"></div>
@@ -295,25 +301,31 @@
 
           <div class="step-actions">
             <button type="button" class="btn btn-secondary" id="btn-review-back">← <span data-i18n="action.back">Back</span></button>
-            <span class="step-count">Step 7 of 7</span>
+            <span class="step-count" id="scoring-step-count">Step 7 of 7</span>
             <button type="button" class="btn btn-primary" id="btn-continue-to-results" disabled>
-              <span data-i18n="step7.continueToResults">Continue to results</span> →
+              <span id="continue-to-results-label">Continue to results</span> →
             </button>
           </div>
         </div>
 
         <!-- Results state -->
         <div id="step7-results" hidden>
+          <div class="trial-nav" id="trial-nav" hidden>
+            <span class="trial-nav-label" id="trial-nav-label"></span>
+            <button type="button" class="btn btn-primary btn-compact" id="btn-next-trial-top">
+              <span id="next-trial-label-top">Next trial</span> →
+            </button>
+          </div>
           <div class="step-card">
             <div class="results-header">
               <h2 data-i18n="step7.resultsTitle">Results</h2>
               <span class="results-trial-badge" id="results-trial-badge"></span>
             </div>
-            <p class="step-help" id="results-source-note"></p>
+            <div class="provenance" id="provenance-results"></div>
 
             <div class="stat-grid" id="stat-grid"></div>
 
-            <h3 class="results-subheading" data-i18n="step7.errorsHeading">Errors excluded from total score</h3>
+            <h3 class="results-subheading" id="errors-heading" data-i18n="step7.errorsHeading">Errors excluded from total score</h3>
             <ul class="error-list" id="error-list"></ul>
 
             <h3 class="results-subheading">Temporal parameters</h3>
@@ -403,6 +415,7 @@
             <h2>Group results</h2>
             <span class="results-trial-badge" id="group-trial-badge"></span>
           </div>
+          <div class="provenance" id="provenance-group"></div>
           <p class="step-help" id="group-progress-note"></p>
 
           <div class="group-stat-grid" id="group-stat-grid"></div>

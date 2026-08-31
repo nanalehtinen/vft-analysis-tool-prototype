@@ -5,7 +5,7 @@
     dataLanguage: null,
     mediaType: null,
     trialMode: null,
-    trialCount: 30,
+    trialCount: 5,
     trialsReady: false,
   };
 
@@ -132,8 +132,9 @@
       state.trialsReady = true;
     } else if (state.trialMode === "multiple") {
       const n = Number(trialCountInput.value);
+      const max = syntheticTrialCount();
       state.trialCount = n;
-      state.trialsReady = Number.isInteger(n) && n >= 2 && n <= 200;
+      state.trialsReady = Number.isInteger(n) && n >= 2 && n <= max;
     } else {
       state.trialsReady = false;
     }
@@ -204,8 +205,12 @@
   if (btnLoadExampleData) {
     btnLoadExampleData.addEventListener("click", () => {
       const type = state.taskType || "pvf";
-      const filename = type === "pvf" ? "phonemic_letter-K_example.txt" : "semantic_animals_example.txt";
-      setDropzoneLoaded("Loaded example: " + filename);
+      if (usingSyntheticBatch()) {
+        setDropzoneLoaded("Loaded synthetic demo batch: " + syntheticTrialCount() + " trials");
+      } else {
+        const filename = type === "pvf" ? "phonemic_letter-K_example.txt" : "semantic_animals_example.txt";
+        setDropzoneLoaded("Loaded the manual's example transcript: " + filename);
+      }
     });
   }
 
@@ -220,11 +225,31 @@
     scored: [], // scored[i] = that trial's cluster ranges, once scored
   };
 
+  // Bring the top of the wizard into view after switching screens, so the
+  // next action is visible instead of wherever the last click left the page.
+  // The button just clicked is blurred first — a focused element that then
+  // gets hidden can make the browser restore its own scroll position — and
+  // the scroll is applied after layout has settled.
+  function scrollToWizardTop() {
+    if (document.activeElement && document.activeElement.blur) {
+      document.activeElement.blur();
+    }
+    const apply = () => {
+      const wizard = document.getElementById("wizard");
+      if (!wizard) return;
+      const top = wizard.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo(0, Math.max(top, 0));
+    };
+    apply();
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(apply);
+  }
+
   function showScoringScreen() {
     renderReviewStep();
     step7Input.hidden = true;
     step7Review.hidden = false;
     step7Results.hidden = true;
+    scrollToWizardTop();
   }
 
   function showTrialResults() {
@@ -232,12 +257,13 @@
     step7Input.hidden = true;
     step7Review.hidden = true;
     step7Results.hidden = false;
+    scrollToWizardTop();
   }
 
   if (btnCalculate) {
     btnCalculate.addEventListener("click", () => {
       if (!hasData) return;
-      batch.count = state.trialMode === "multiple" ? state.trialCount : 1;
+      batch.count = state.trialMode === "multiple" ? Math.min(state.trialCount, syntheticTrialCount()) : 1;
       batch.current = 0;
       batch.scored = [];
       showScoringScreen();
@@ -271,18 +297,20 @@
     btnEditInputs.addEventListener("click", showScoringScreen);
   }
 
-  const btnNextTrial = document.getElementById("btn-next-trial");
-  if (btnNextTrial) {
-    btnNextTrial.addEventListener("click", () => {
-      if (batch.current < batch.count - 1) {
-        batch.current += 1;
-        showScoringScreen();
-      } else {
-        renderGroupResults();
-        goToTab("results");
-      }
-    });
+  function advanceTrial() {
+    if (batch.current < batch.count - 1) {
+      batch.current += 1;
+      showScoringScreen();
+    } else {
+      renderGroupResults();
+      goToTab("results");
+    }
   }
+
+  ["btn-next-trial", "btn-next-trial-top"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("click", advanceTrial);
+  });
 
   // --- Step 8: manual semantic clustering -----------------------------------
   // Semantic clustering is scored by the rater, not by the tool. The rater
@@ -305,14 +333,13 @@
   const trialProgressScoringEl = document.getElementById("trial-progress-scoring");
   const cheatsheetListEl = document.getElementById("cheatsheet-list");
   const btnSemanticClear = document.getElementById("btn-semantic-clear");
-  const btnSemanticExample = document.getElementById("btn-semantic-example");
 
   function semanticIsCongruent(type) {
     return type === "svf";
   }
 
   function currentTrial() {
-    return VFT_DATA.results[state.taskType || "pvf"];
+    return activeTrial();
   }
 
   function clusterIndexAt(i) {
@@ -434,6 +461,18 @@
     manualClusters = saved ? saved.map((c) => ({ s: c.s, e: c.e })) : [];
     manualDrag = null;
 
+    renderProvenance(document.getElementById("provenance-scoring"), currentProvenance());
+
+    const isBatch = batch.count > 1;
+    const continueLabel = document.getElementById("continue-to-results-label");
+    if (continueLabel) {
+      continueLabel.textContent = isBatch ? "See this trial's results" : "Continue to results";
+    }
+    const scoringCount = document.getElementById("scoring-step-count");
+    if (scoringCount) {
+      scoringCount.textContent = isBatch ? "Trial " + (batch.current + 1) + " of " + batch.count : "Step 7 of 7";
+    }
+
     if (trialProgressScoringEl) {
       trialProgressScoringEl.hidden = batch.count < 2;
       trialProgressScoringEl.textContent = "Trial " + (batch.current + 1) + " of " + batch.count;
@@ -497,14 +536,6 @@
     });
   }
 
-  if (btnSemanticExample) {
-    btnSemanticExample.addEventListener("click", () => {
-      const ranges = (VFT_DATA.semanticScoring || {})[state.taskType || "pvf"] || [];
-      manualClusters = ranges.map((p) => ({ s: p[0], e: p[1] }));
-      refreshSemanticStep();
-    });
-  }
-
   // Manually scored clusters carry `errorFlags` aligned to `words`, which is
   // exact even when the same word occurs twice in one cluster. Rule-based
   // clusters from the manual's worked examples still match by word.
@@ -523,6 +554,98 @@
   function errorWordsOf(row) {
     if (!row.words) return [];
     return row.words.filter((w, i) => isErrorWord(row, w, i));
+  }
+
+  // --- Which trial is being scored, and where its data comes from ----------
+  // Two entirely separate sources, never mixed:
+  //   single trial -> VFT_DATA.results, transcribed from the published manual
+  //   batch        -> VFT_DATA.illustrativeBatch, synthetic demo data
+  // Only semantic trials have a synthetic batch; see step 6.
+  function usingSyntheticBatch() {
+    return (
+      state.trialMode === "multiple" &&
+      state.taskType === "svf" &&
+      !!(VFT_DATA.illustrativeBatch && VFT_DATA.illustrativeBatch.svf)
+    );
+  }
+
+  function syntheticTrialCount() {
+    return VFT_DATA.illustrativeBatch.svf.length;
+  }
+
+  // The phonemic reading is deterministic, so it is computed rather than
+  // stored: three or more consecutive words sharing an initial phoneme form a
+  // cluster (the manual's special rule for semantic fluency), and exactly two
+  // consecutive words cluster when they share the same opening. Verified to
+  // reproduce Appendix A's published task-discrepant reading for the worked
+  // example exactly.
+  function buildPhonemicReading(words, errorIndices) {
+    const errorIdx = errorIndices || [];
+    const clusters = [];
+    const nonClustering = [];
+    let i = 0;
+
+    while (i < words.length) {
+      let j = i;
+      while (j + 1 < words.length && words[j + 1][0].toLowerCase() === words[i][0].toLowerCase()) j++;
+      const len = j - i + 1;
+      const opening = words[i].slice(0, 2).toLowerCase();
+      const isCluster = len >= 3 || (len === 2 && words[i + 1].slice(0, 2).toLowerCase() === opening);
+
+      if (isCluster) {
+        const slice = words.slice(i, j + 1);
+        clusters.push({
+          pos: i,
+          words: slice,
+          errorFlags: slice.map((w, k) => errorIdx.indexOf(i + k) !== -1),
+          rule:
+            len >= 3
+              ? "1.1 Word-initial phonemes — three or more consecutive words sharing an initial phoneme (special rule for semantic fluency)"
+              : "1.1 Word-initial phonemes (shared " + opening + "-)",
+        });
+      } else {
+        for (let k = i; k <= j; k++) nonClustering.push({ pos: k, word: words[k] });
+      }
+      i = j + 1;
+    }
+
+    const inClusters = clusters.reduce((a, c) => a + c.words.length, 0);
+    return {
+      clusters: clusters,
+      nonClusteringWords: nonClustering,
+      ambiguousCases: [],
+      count: clusters.length,
+      meanClusterSize: clusters.length ? Math.round((inClusters / clusters.length) * 10) / 10 : 0,
+    };
+  }
+
+  function syntheticTrial(index) {
+    const src = VFT_DATA.illustrativeBatch.svf[index];
+    return {
+      trialLabel: "Semantic (SVF) — category Animals",
+      synthetic: true,
+      words: src.words,
+      errorIndices: src.errorIndices,
+      errors: src.errorIndices.map((idx) => ({
+        word: src.words[idx],
+        type: "Repetition — non-sequential",
+        note: 'Scored 0 for total score, but counted in its cluster (see "' + src.words[idx] + ' (error)" below).',
+      })),
+      totalScore: src.totalScore,
+      // The semantic (task-congruent) reading comes from the rater, so there
+      // is no rule-based reading to seed here.
+      clusters: [],
+      nonClusteringWords: [],
+      ambiguousCases: [],
+      meanClusterSize: 0,
+      switches: 0,
+      taskDiscrepant: buildPhonemicReading(src.words, src.errorIndices),
+    };
+  }
+
+  function activeTrial() {
+    if (usingSyntheticBatch()) return syntheticTrial(batch.current);
+    return VFT_DATA.results[state.taskType || "pvf"];
   }
 
   // Merges a rule-based reading's clusters with the human's resolved choice
@@ -567,8 +690,8 @@
   // `manualRanges`, when given, replaces whichever reading is the semantic one
   // for this task type with the rater's own scoring. The other reading stays
   // rule-based.
-  function getResolvedResult(type, resolutions, manualRanges) {
-    const r = VFT_DATA.results[type];
+  function getResolvedResult(trial, type, resolutions, manualRanges) {
+    const r = trial;
     if (!r) return null;
 
     let congruent, discrepant;
@@ -634,14 +757,10 @@
   // aggregation is a separate view, so this is always a single trial.
   function renderResultsInto(els, opts) {
     const type = opts.type || "pvf";
-    const r = getResolvedResult(type, opts.resolutions || {}, opts.manualRanges);
+    const r = getResolvedResult(opts.trial, type, opts.resolutions || {}, opts.manualRanges);
     if (!r) return;
 
     els.badge.textContent = opts.badgeText || r.trialLabel;
-
-    if (els.note) {
-      els.note.textContent = "Based on the manual's published worked example.";
-    }
 
     const hasAudio = !!opts.hasAudio;
     const stats = [
@@ -679,12 +798,15 @@
     }
 
     els.errorList.innerHTML = r.errors.map((e) => `<li><strong>${e.word}</strong> — ${e.type}. ${e.note}</li>`).join("");
+    if (els.errorsHeading) {
+      els.errorsHeading.hidden = r.errors.length === 0;
+    }
+    els.errorList.hidden = r.errors.length === 0;
   }
 
   // --- Step 7 results (wizard-driven) ---------------------------------------
   const step7Els = {
     badge: document.getElementById("results-trial-badge"),
-    note: document.getElementById("results-source-note"),
     statGrid: document.getElementById("stat-grid"),
     clusterHeading: document.querySelector('[data-i18n="step7.clusterBreakdown"]'),
     errorsHeading: document.querySelector('[data-i18n="step7.errorsHeading"]'),
@@ -692,6 +814,7 @@
     discrepantHeading: document.getElementById("discrepant-heading"),
     discrepantBody: document.getElementById("discrepant-table-body"),
     errorList: document.getElementById("error-list"),
+    errorsHeading: document.getElementById("errors-heading"),
     clusterManualNote: document.getElementById("cluster-manual-note"),
     discrepantManualNote: document.getElementById("discrepant-manual-note"),
   };
@@ -701,25 +824,37 @@
     const isLast = batch.current >= batch.count - 1;
     const ranges = batch.scored[batch.current] || [];
 
+    const trial = activeTrial();
     renderResultsInto(step7Els, {
+      trial: trial,
       type: type,
       hasAudio: state.mediaType === "voice",
       resolutions: reviewResolutions,
       manualRanges: ranges,
       badgeText:
         batch.count > 1
-          ? "Trial " + (batch.current + 1) + " of " + batch.count + " · " + VFT_DATA.results[type].trialLabel
-          : VFT_DATA.results[type].trialLabel,
+          ? "Trial " + (batch.current + 1) + " of " + batch.count + " · " + trial.trialLabel
+          : trial.trialLabel,
     });
+
+    renderProvenance(document.getElementById("provenance-results"), currentProvenance());
 
     const progress = document.getElementById("trial-progress-results");
     if (progress) {
       progress.textContent = batch.count > 1 ? "Trial " + (batch.current + 1) + " of " + batch.count : "";
     }
 
-    const nextLabel = document.getElementById("next-trial-label");
-    if (nextLabel) {
-      nextLabel.textContent = isLast ? "View group results" : "Next trial";
+    const label = isLast ? "View group results" : "Next trial";
+    ["next-trial-label", "next-trial-label-top"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = label;
+    });
+
+    const nav = document.getElementById("trial-nav");
+    const navLabel = document.getElementById("trial-nav-label");
+    if (nav) nav.hidden = batch.count < 2;
+    if (navLabel) {
+      navLabel.textContent = "Trial " + (batch.current + 1) + " of " + batch.count + " scored";
     }
 
     const note = document.getElementById("trial-results-note");
@@ -761,7 +896,7 @@
 
   function buildResultsCSV() {
     const type = state.taskType || "pvf";
-    const r = getResolvedResult(type, reviewResolutions, manualClusters);
+    const r = getResolvedResult(activeTrial(), type, reviewResolutions, manualClusters);
     const header = [
       "trial_id",
       "task_type",
@@ -817,7 +952,7 @@
 
   function buildResultsJSON() {
     const type = state.taskType || "pvf";
-    const r = getResolvedResult(type, reviewResolutions, manualClusters);
+    const r = getResolvedResult(activeTrial(), type, reviewResolutions, manualClusters);
 
     function toSequence(rows) {
       return rows.map((row) =>
@@ -907,7 +1042,29 @@
     });
     if (n === 3) updatePromptExampleUI();
     if (n === 5) renderValueChecklist();
+    if (n === 6) updateTrialModeAvailability();
     if (n === 7) updateStep7InputCopy();
+  }
+
+  // --- Step 6: batch is only offered where a demo batch exists -------------
+  // The synthetic batch covers semantic trials only, so a phonemic batch
+  // would just repeat one worked example and report SD = 0 on every metric.
+  function updateTrialModeAvailability() {
+    const card = document.querySelector('.choice-grid[data-field="trialMode"] .choice-card[data-value="multiple"]');
+    if (!card) return;
+    const allowed = state.taskType === "svf";
+    const note = card.querySelector(".trial-mode-note");
+
+    card.disabled = !allowed;
+    card.classList.toggle("is-disabled", !allowed);
+    if (note) note.hidden = allowed;
+
+    if (!allowed && state.trialMode === "multiple") {
+      state.trialMode = null;
+      card.classList.remove("is-selected");
+      document.getElementById("trial-count-row").hidden = true;
+      recomputeTrialsReady();
+    }
   }
 
   // --- Step 7: adjust copy for single trial vs. batch ----------------------
@@ -915,6 +1072,15 @@
     const title = document.getElementById("step7-title");
     const help = document.getElementById("step7-help");
     if (!title || !help) return;
+
+    renderProvenance(document.getElementById("provenance-input"), currentProvenance());
+
+    const loadLabel = document.getElementById("load-example-label");
+    if (loadLabel) {
+      loadLabel.textContent = usingSyntheticBatch()
+        ? "For demonstration purposes, load the " + syntheticTrialCount() + " synthetic demo transcripts here."
+        : "For demonstration purposes, load the manual's example transcript here.";
+    }
     if (state.trialMode === "multiple") {
       title.textContent = "Add this batch's transcripts";
       help.textContent =
@@ -952,6 +1118,30 @@
       .join("");
   }
 
+  // --- Data provenance ------------------------------------------------------
+  // Every screen that shows numbers states where those numbers came from, so
+  // the published worked example and the synthetic demo batch can never be
+  // mistaken for one another.
+  const PROVENANCE = {
+    manual:
+      '<strong>Published data.</strong> This trial is the worked example transcribed directly from ' +
+      'Appendix A of Lehtinen et al. (2023) — the instruction manual this tool implements.',
+    synthetic:
+      '<strong>Synthetic data — not participant data.</strong> These trials were generated for this ' +
+      'prototype so the group view has a realistic spread to aggregate. They are not real responses, ' +
+      'not from the dissertation dataset, and not study results.',
+  };
+
+  function renderProvenance(el, kind) {
+    if (!el) return;
+    el.className = "provenance " + (kind === "synthetic" ? "is-synthetic" : "is-manual");
+    el.innerHTML = PROVENANCE[kind];
+  }
+
+  function currentProvenance() {
+    return usingSyntheticBatch() ? "synthetic" : "manual";
+  }
+
   // --- Group results --------------------------------------------------------
   // The scalar metrics aggregate across trials; the cluster breakdown does
   // not, since it is one participant's words in their own production order.
@@ -984,7 +1174,8 @@
     const out = [];
     batch.scored.forEach((ranges, i) => {
       if (!ranges) return;
-      out.push({ index: i, result: getResolvedResult(type, reviewResolutions, ranges) });
+      const trial = usingSyntheticBatch() ? syntheticTrial(i) : VFT_DATA.results[type];
+      out.push({ index: i, result: getResolvedResult(trial, type, reviewResolutions, ranges) });
     });
     return out;
   }
@@ -1002,7 +1193,8 @@
     groupContentEl.hidden = false;
 
     const type = state.taskType || "pvf";
-    groupBadgeEl.textContent = VFT_DATA.results[type].trialLabel;
+    renderProvenance(document.getElementById("provenance-group"), trials[0].result.synthetic ? "synthetic" : "manual");
+    groupBadgeEl.textContent = trials[0].result.trialLabel;
     groupProgressEl.textContent =
       trials.length === batch.count
         ? "All " + batch.count + " trial" + (batch.count === 1 ? "" : "s") + " scored."

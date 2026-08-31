@@ -47,20 +47,6 @@ const VFT_DATA = {
     ],
   },
 
-  // Step 8: the manual's published semantic scoring for each worked example,
-  // as index ranges into that trial's `words`. Semantic clustering is scored
-  // by hand in this tool, so these ranges are never used to score for the
-  // rater — they back the Preview tab (which shows a completed run) and the
-  // demo shortcut on the manual scoring screen.
-  //
-  // Which reading is semantic depends on the task: in a phonemic trial the
-  // semantic reading is the task-discrepant one; in a semantic trial it is
-  // the task-congruent one.
-  semanticScoring: {
-    pvf: [[5, 6], [7, 9], [10, 12], [15, 17], [18, 19]],
-    svf: [[0, 1], [3, 4], [5, 6], [7, 11], [13, 15], [17, 20]],
-  },
-
   // The main clustering rules, shown as a cheat sheet while scoring by hand.
   // Condensed from Appendix A §2; the full text lives in the Scoring Rules tab.
   semanticRules: [
@@ -70,6 +56,35 @@ const VFT_DATA = {
     { n: "2.3", t: "Associations are not clusters", d: "Antonyms included. Test: if more words could be added to the category, it is a cluster; if not, it is an association." },
     { n: "—", t: "Overlaps", d: "A word connecting two clusters belongs to the first one only, and is never counted twice." },
   ],
+
+
+  // ---------------------------------------------------------------------
+  // SYNTHETIC DATA — for the batch / group-view demonstration only.
+  //
+  // These 30 trials were generated for this prototype. They are NOT
+  // participant data, NOT drawn from the dissertation dataset, and NOT
+  // study results. They exist so the group-level view has a realistic
+  // spread to aggregate, since the single-trial path reuses one worked
+  // example and would otherwise show SD = 0 on every metric.
+  //
+  // No semantic scoring is stored for these trials. Semantic clustering is
+  // the rater's job, so there is deliberately no stored answer anywhere in
+  // this file. The phonemic (task-discrepant) reading is not stored either:
+  // it follows deterministic rules and is computed at runtime, exactly as
+  // the real tool would.
+  //
+  // The single-trial path uses `results` below, which is transcribed from
+  // the published manual. The two are never mixed.
+  // ---------------------------------------------------------------------
+  illustrativeBatch: {
+    svf: [
+      { words: ["virtahepo", "norsu", "seepra", "kani", "leijona", "koira", "delfiini", "hylje", "mursu", "valas", "ilves", "peura", "mäyrä", "hirvi", "kettu"], errorIndices: [], totalScore: 15 },
+      { words: ["lehmä", "käärme", "sammakko", "sisilisko", "perhonen", "ilves", "ahma", "kuha", "lohi", "silakka", "ahven", "krokotiili", "kotka", "haukka", "merikotka", "kanahaukka", "tiikeri", "apina", "krokotiili", "hamsteri", "marsu", "kissa", "koira", "perhonen", "mehiläinen", "kärpänen", "ampiainen", "kettu"], errorIndices: [18, 23], totalScore: 26 },
+      { words: ["hanhi", "kuikka", "joutsen", "krokotiili", "seepra", "pöllö", "peippo", "kotka", "sorsa", "kotka", "kanahaukka", "haukka", "varis", "käki", "muurahainen", "kärpänen", "koira", "kani", "kissa"], errorIndices: [9], totalScore: 18 },
+      { words: ["seepra", "ampiainen", "perhonen", "hyttynen", "ahven", "silakka", "marsu", "merikotka", "kotka", "kanahaukka", "haukka", "krokotiili", "susi", "jänis", "peura", "kirahvi", "apina", "seepra", "ilves", "ahma", "susi", "sammakko", "kilpikonna"], errorIndices: [17, 20], totalScore: 21 },
+      { words: ["ampiainen", "hyttynen", "mehiläinen", "hevonen", "kukko", "sika", "kotka", "merikotka", "kanahaukka", "kani", "marsu", "undulaatti", "delfiini", "haukka"], errorIndices: [], totalScore: 14 },
+    ],
+  },
 
   // Step 7: canned results for the "Load example data" path, reproducing the
   // manual's own worked examples (Appendix A, sample protocols section).
