@@ -364,9 +364,9 @@
             </div>
 
             <h3 class="results-subheading" id="discrepant-heading">Task-discrepant clusters</h3>
-            <p class="step-help discrepant-help">Clusters from the other domain found within this trial (e.g. semantic clusters inside a phonemic trial) — scored separately from the clustering above, per the manual.</p>
+            <p class="step-help discrepant-help" id="discrepant-help">Clusters from the other domain found within this trial (e.g. semantic clusters inside a phonemic trial) — scored separately from the clustering above, per the manual.</p>
             <p class="manual-scored-note" id="discrepant-manual-note" hidden></p>
-            <div class="cluster-table-wrap">
+            <div class="cluster-table-wrap" id="discrepant-table-wrap">
               <table class="cluster-table" id="discrepant-table">
                 <thead>
                   <tr>
@@ -431,7 +431,7 @@
                   <th>Errors</th>
                   <th>Mean cluster size</th>
                   <th>Switches</th>
-                  <th>Task discrepant</th>
+                  <th id="group-discrepant-header">Task discrepant</th>
                 </tr>
               </thead>
               <tbody id="group-trial-body"></tbody>
@@ -493,7 +493,7 @@
         <p class="guidance-p">Then, two clustering readings — scored independently per the manual:</p>
         <ul class="guidance-list">
           <li><strong>Task-congruent clustering</strong> uses the same domain as the task — phonemic clusters (shared sounds, rhymes) in a phonemic trial, semantic clusters (shared meaning) in a semantic trial. This is the reading behind Mean cluster size and Number of switches.</li>
-          <li><strong>Task-discrepant clustering</strong> is the other domain showing up anyway — e.g. a participant grouping words by meaning ("kynä, kumi" — things related to writing) while doing a phonemic task. It gets its own count and mean cluster size, since it reflects a distinct strategy.</li>
+          <li><strong>Task-discrepant clustering</strong> is the other domain showing up anyway — e.g. a participant grouping words by meaning ("kynä, kumi" — things related to writing) while doing a phonemic task. It gets its own count and mean cluster size, since it reflects a distinct strategy. In a phonemic trial this reading is semantic, so you score it yourself and it is shown. In a semantic trial it is phonemic, which is not implemented yet — so it is shown as not calculated rather than as a result the tool can stand behind.</li>
         </ul>
         <ul class="guidance-defs">
           <li><strong>Cluster breakdown tables</strong> — every word accounted for, in the order the participant actually said it, including non-clustering single words.</li>

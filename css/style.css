@@ -762,6 +762,14 @@ button { font-family: inherit; }
 
 .provenance.is-manual strong { color: var(--teal); }
 
+.provenance.is-translated {
+  background: var(--surface-muted);
+  border-left-color: var(--border-strong);
+  color: var(--text);
+}
+
+.provenance.is-translated strong { color: var(--text-muted); }
+
 .provenance.is-synthetic {
   background: var(--rose-tint);
   border-left-color: var(--rose);

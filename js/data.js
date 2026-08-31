@@ -43,7 +43,7 @@ const VFT_DATA = {
       { label: "Temporal parameters", desc: "Score broken down by time segment (e.g. four 15-second windows).", requiresAudio: true },
       { label: "Mean semantic cluster size", desc: "Average size of task-congruent, naturally occurring semantic clusters." },
       { label: "Number of switches", desc: "Transitions between semantic clusters, including single-word transitions." },
-      { label: "Number of task discrepant clusters", desc: "Phonemic clusters found within this semantic trial — a separate strategy the manual scores independently of semantic (task-congruent) clustering." },
+      { label: "Number of task discrepant clusters", desc: "Phonemic clusters found within this semantic trial — a separate strategy the manual scores independently of semantic (task-congruent) clustering.", notYetBuilt: true },
     ],
   },
 
@@ -57,6 +57,31 @@ const VFT_DATA = {
     { n: "—", t: "Overlaps", d: "A word connecting two clusters belongs to the first one only, and is never counted twice." },
   ],
 
+
+
+  // ---------------------------------------------------------------------
+  // TRANSLATED WORKED EXAMPLE — English single-trial walkthrough.
+  //
+  // The manual's worked example word for word in English, so the English
+  // path has a single trial to walk through. The semantic structure carries
+  // over intact, so the same clustering decisions arise for the rater.
+  //
+  // This is a translation, not published English data, and is labelled as
+  // such wherever it appears. Note that phonemic clustering does NOT survive
+  // translation — which is one reason the phonemic task-discrepant reading
+  // is not demonstrated for semantic trials.
+  // ---------------------------------------------------------------------
+  translatedExample: {
+    en: {
+      svf: {
+        trialLabel: "Semantic (SVF) — category Animals",
+        // Index 7 is the repetition of "horse", matching the Finnish original.
+        words: ["dog", "cat", "horse", "spider", "fly", "snake", "eel", "horse", "cow", "calf", "pig", "hen", "pied flycatcher", "loon", "pelican", "swan", "sparrow", "hamster", "rat", "mouse", "squirrel"],
+        errorIndices: [7],
+        totalScore: 20,
+      },
+    },
+  },
 
   // ---------------------------------------------------------------------
   // SYNTHETIC DATA — for the batch / group-view demonstration only.

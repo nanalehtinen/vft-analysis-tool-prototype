@@ -576,50 +576,46 @@
     return set ? set.length : 0;
   }
 
-  // The phonemic reading is deterministic, so it is computed rather than
-  // stored: three or more consecutive words sharing an initial phoneme form a
-  // cluster (the manual's special rule for semantic fluency), and exactly two
-  // consecutive words cluster when they share the same opening. Verified to
-  // reproduce Appendix A's published task-discrepant reading for the worked
-  // example exactly.
-  function buildPhonemicReading(words, errorIndices) {
-    const errorIdx = errorIndices || [];
-    const clusters = [];
-    const nonClustering = [];
-    let i = 0;
+  // Phonemic clustering is not implemented. A rule-based reading was
+  // prototyped and verified against Appendix A's worked example, but it was
+  // validated against Finnish only and cross-language phonemic clustering is
+  // phase-three work — so it is not shipped and not demonstrated. See commit
+  // ca0afb9 for that implementation.
 
-    while (i < words.length) {
-      let j = i;
-      while (j + 1 < words.length && words[j + 1][0].toLowerCase() === words[i][0].toLowerCase()) j++;
-      const len = j - i + 1;
-      const opening = words[i].slice(0, 2).toLowerCase();
-      const isCluster = len >= 3 || (len === 2 && words[i + 1].slice(0, 2).toLowerCase() === opening);
+  // The task-discrepant reading in a semantic trial is phonemic. Phonemic
+  // clustering across languages is Phase 3 work, so it is not demonstrated:
+  // shown as unavailable rather than as a result the tool can stand behind.
+  function discrepantIsPhonemic(type) {
+    return (type || state.taskType || "pvf") === "svf";
+  }
 
-      if (isCluster) {
-        const slice = words.slice(i, j + 1);
-        clusters.push({
-          pos: i,
-          words: slice,
-          errorFlags: slice.map((w, k) => errorIdx.indexOf(i + k) !== -1),
-          rule:
-            len >= 3
-              ? "1.1 Word-initial phonemes — three or more consecutive words sharing an initial phoneme (special rule for semantic fluency)"
-              : "1.1 Word-initial phonemes (shared " + opening + "-)",
-        });
-      } else {
-        for (let k = i; k <= j; k++) nonClustering.push({ pos: k, word: words[k] });
-      }
-      i = j + 1;
-    }
-
-    const inClusters = clusters.reduce((a, c) => a + c.words.length, 0);
-    return {
-      clusters: clusters,
-      nonClusteringWords: nonClustering,
+  // Builds the standard trial shape from a bare word list.
+  function trialFromWords(src, label, flags) {
+    const base = {
+      trialLabel: label,
+      words: src.words,
+      errorIndices: src.errorIndices,
+      errors: src.errorIndices.map((idx) => ({
+        word: src.words[idx],
+        type: "Repetition — non-sequential",
+        note: 'Scored 0 for total score, but counted in its cluster (see "' + src.words[idx] + ' (error)" below).',
+      })),
+      totalScore: src.totalScore,
+      // The semantic (task-congruent) reading comes from the rater, so there
+      // is no rule-based reading to seed here.
+      clusters: [],
+      nonClusteringWords: [],
       ambiguousCases: [],
-      count: clusters.length,
-      meanClusterSize: clusters.length ? Math.round((inClusters / clusters.length) * 10) / 10 : 0,
+      meanClusterSize: 0,
+      switches: 0,
+      taskDiscrepant: null,
     };
+    return Object.assign(base, flags || {});
+  }
+
+  function translatedExample() {
+    const byLang = VFT_DATA.translatedExample && VFT_DATA.translatedExample[state.dataLanguage];
+    return (byLang && byLang[state.taskType]) || null;
   }
 
   function syntheticTrial(index) {
@@ -642,12 +638,16 @@
       ambiguousCases: [],
       meanClusterSize: 0,
       switches: 0,
-      taskDiscrepant: buildPhonemicReading(src.words, src.errorIndices),
+      taskDiscrepant: null,
     };
   }
 
   function activeTrial() {
     if (usingSyntheticBatch()) return syntheticTrial(batch.current);
+    const translated = translatedExample();
+    if (translated) {
+      return trialFromWords(translated, translated.trialLabel, { translated: true });
+    }
     return VFT_DATA.results[state.taskType || "pvf"];
   }
 
@@ -702,14 +702,16 @@
       const manual = buildManualReading(r, manualRanges);
       if (semanticIsCongruent(type)) {
         congruent = manual;
-        discrepant = r.taskDiscrepant ? resolveClusterReading(r.taskDiscrepant, resolutions) : null;
+        // The discrepant reading here is phonemic, which is not demonstrated.
+        discrepant = null;
       } else {
         congruent = resolveClusterReading(r, resolutions);
         discrepant = manual;
       }
     } else {
       congruent = resolveClusterReading(r, resolutions);
-      discrepant = r.taskDiscrepant ? resolveClusterReading(r.taskDiscrepant, resolutions) : null;
+      discrepant =
+        !discrepantIsPhonemic(type) && r.taskDiscrepant ? resolveClusterReading(r.taskDiscrepant, resolutions) : null;
     }
 
     return { ...r, ...congruent, taskDiscrepant: discrepant, semanticIsCongruent: semanticIsCongruent(type) };
@@ -773,7 +775,11 @@
       // Always one decimal, so it reads the same here as on the scoring screen.
       { value: Number(r.meanClusterSize).toFixed(1), label: type === "pvf" ? "Mean phonemic cluster size" : "Mean semantic cluster size" },
       { value: r.switches, label: "Number of switches" },
-      { value: r.taskDiscrepant ? r.taskDiscrepant.count : "N/A", label: "Task discrepant clusters" },
+      {
+        value: r.taskDiscrepant ? r.taskDiscrepant.count : "N/A",
+        label: "Task discrepant clusters",
+        unavailable: !r.taskDiscrepant,
+      },
     ];
     els.statGrid.innerHTML = stats
       .map(
@@ -787,8 +793,16 @@
       .join("");
 
     els.clusterBody.innerHTML = renderClusterRows(r.rows);
-    if (els.discrepantBody && r.taskDiscrepant) {
-      els.discrepantBody.innerHTML = renderClusterRows(r.taskDiscrepant.rows);
+    if (els.discrepantBody) {
+      els.discrepantBody.innerHTML = r.taskDiscrepant ? renderClusterRows(r.taskDiscrepant.rows) : "";
+    }
+    if (els.discrepantWrap) {
+      els.discrepantWrap.classList.toggle("is-unavailable-table", !r.taskDiscrepant);
+    }
+    if (els.discrepantHelp) {
+      els.discrepantHelp.textContent = r.taskDiscrepant
+        ? "Clusters from the other domain found within this trial (e.g. semantic clusters inside a phonemic trial) — scored separately from the clustering above, per the manual."
+        : "In a semantic trial the task-discrepant reading is phonemic. Phonemic clustering is not implemented yet, so it is not calculated in this prototype and is shown blank below to illustrate the intended output.";
     }
 
     if (els.clusterManualNote) {
@@ -816,6 +830,8 @@
     clusterBody: document.getElementById("cluster-table-body"),
     discrepantHeading: document.getElementById("discrepant-heading"),
     discrepantBody: document.getElementById("discrepant-table-body"),
+    discrepantWrap: document.getElementById("discrepant-table-wrap"),
+    discrepantHelp: document.getElementById("discrepant-help"),
     errorList: document.getElementById("error-list"),
     errorsHeading: document.getElementById("errors-heading"),
     clusterManualNote: document.getElementById("cluster-manual-note"),
@@ -1069,7 +1085,12 @@
     // A batch needs demo trials behind it; the single-trial path is the
     // manual's published worked example, which exists in Finnish only.
     const batchAllowed = !!(VFT_DATA.illustrativeBatch[state.dataLanguage || "fi"] || {})[state.taskType];
-    const singleAllowed = (state.dataLanguage || "fi") === "fi";
+    const singleTag = grid.querySelector('.choice-card[data-value="single"] .source-tag');
+    if (singleTag) {
+      singleTag.textContent = (state.dataLanguage || "fi") === "fi" ? "Published worked example" : "Translated worked example";
+    }
+    const lang = state.dataLanguage || "fi";
+    const singleAllowed = lang === "fi" || !!((VFT_DATA.translatedExample[lang] || {})[state.taskType]);
 
     const batchCard = grid.querySelector('.choice-card[data-value="multiple"]');
     const singleCard = grid.querySelector('.choice-card[data-value="single"]');
@@ -1131,14 +1152,20 @@
 
     list.innerHTML = values
       .map((v) => {
-        const unavailable = v.requiresAudio && !hasAudio;
+        const unavailable = (v.requiresAudio && !hasAudio) || v.notYetBuilt;
         return `
           <li class="value-item${unavailable ? " is-unavailable" : ""}">
             <span class="value-item-icon">${unavailable ? "–" : "✓"}</span>
             <span class="value-item-body">
               <span class="value-item-label">${v.label}</span>
               <span class="value-item-desc">${v.desc}</span>
-              ${unavailable ? '<span class="value-item-note">Needs audio — not available for transcript input</span>' : ""}
+              ${
+                v.notYetBuilt
+                  ? '<span class="value-item-note">Not implemented yet — not calculated in this prototype</span>'
+                  : unavailable
+                  ? '<span class="value-item-note">Needs audio — not available for transcript input</span>'
+                  : ""
+              }
             </span>
           </li>
         `;
@@ -1154,6 +1181,10 @@
     manual:
       '<strong>Published data.</strong> This trial is the worked example transcribed directly from ' +
       'Appendix A of Lehtinen et al. (2023) — the instruction manual this tool implements.',
+    translated:
+      '<strong>Translated worked example.</strong> The manual\'s published worked example ' +
+      '(Appendix A, Lehtinen et al. 2023) translated word for word into English, so the English path ' +
+      'has a single trial to walk through. The published data itself is Finnish.',
     synthetic:
       '<strong>Synthetic data — not participant data.</strong> These trials were generated for this ' +
       'prototype so the group view has a realistic spread to aggregate. They are not real responses, ' +
@@ -1162,12 +1193,14 @@
 
   function renderProvenance(el, kind) {
     if (!el) return;
-    el.className = "provenance " + (kind === "synthetic" ? "is-synthetic" : "is-manual");
+    const variant = kind === "synthetic" ? "is-synthetic" : kind === "translated" ? "is-translated" : "is-manual";
+    el.className = "provenance " + variant;
     el.innerHTML = PROVENANCE[kind];
   }
 
   function currentProvenance() {
-    return usingSyntheticBatch() ? "synthetic" : "manual";
+    if (usingSyntheticBatch()) return "synthetic";
+    return translatedExample() ? "translated" : "manual";
   }
 
   // --- Group results --------------------------------------------------------
@@ -1221,20 +1254,26 @@
     groupContentEl.hidden = false;
 
     const type = state.taskType || "pvf";
-    renderProvenance(document.getElementById("provenance-group"), trials[0].result.synthetic ? "synthetic" : "manual");
+    renderProvenance(
+      document.getElementById("provenance-group"),
+      trials[0].result.synthetic ? "synthetic" : trials[0].result.translated ? "translated" : "manual"
+    );
     groupBadgeEl.textContent = trials[0].result.trialLabel;
     groupProgressEl.textContent =
       trials.length === batch.count
         ? "All " + batch.count + " trial" + (batch.count === 1 ? "" : "s") + " scored."
         : trials.length + " of " + batch.count + " trials scored — these statistics are incomplete.";
 
+    const showDiscrepant = !discrepantIsPhonemic(type);
     const metrics = [
       { label: "Total score", dp: 1, get: (r) => r.totalScore },
       { label: "Errors", dp: 1, get: (r) => r.errors.length },
       { label: type === "pvf" ? "Mean phonemic cluster size" : "Mean semantic cluster size", dp: 2, get: (r) => r.meanClusterSize },
       { label: "Number of switches", dp: 1, get: (r) => r.switches },
-      { label: "Task discrepant clusters", dp: 1, get: (r) => (r.taskDiscrepant ? r.taskDiscrepant.count : 0) },
     ];
+    if (showDiscrepant) {
+      metrics.push({ label: "Task discrepant clusters", dp: 1, get: (r) => (r.taskDiscrepant ? r.taskDiscrepant.count : 0) });
+    }
 
     groupStatGridEl.innerHTML = metrics
       .map((metric) => {
@@ -1252,6 +1291,9 @@
       })
       .join("");
 
+    const discrepantHeader = document.getElementById("group-discrepant-header");
+    if (discrepantHeader) discrepantHeader.hidden = !showDiscrepant;
+
     groupTrialBodyEl.innerHTML = trials
       .map((t) => {
         const r = t.result;
@@ -1262,10 +1304,10 @@
             <td>${r.errors.length}</td>
             <td>${fmt(r.meanClusterSize)}</td>
             <td>${r.switches}</td>
-            <td>${r.taskDiscrepant ? r.taskDiscrepant.count : "—"}</td>
+            ${showDiscrepant ? "<td>" + (r.taskDiscrepant ? r.taskDiscrepant.count : "—") + "</td>" : ""}
           </tr>
           <tr class="group-detail-row" data-detail="${t.index}" hidden>
-            <td colspan="6">
+            <td colspan="${showDiscrepant ? 6 : 5}">
               <h4 class="group-detail-heading">Task-congruent clusters</h4>
               ${r.semanticIsCongruent ? '<p class="manual-scored-note">' + MANUAL_SCORED_NOTE + "</p>" : ""}
               <div class="cluster-table-wrap">
@@ -1274,14 +1316,16 @@
                   <tbody>${renderClusterRows(r.rows)}</tbody>
                 </table>
               </div>
-              <h4 class="group-detail-heading">Task-discrepant clusters</h4>
-              ${r.semanticIsCongruent ? "" : '<p class="manual-scored-note">' + MANUAL_SCORED_NOTE + "</p>"}
-              <div class="cluster-table-wrap">
-                <table class="cluster-table">
-                  <thead><tr><th>Words</th><th>Size</th><th>Rule applied</th></tr></thead>
-                  <tbody>${r.taskDiscrepant ? renderClusterRows(r.taskDiscrepant.rows) : ""}</tbody>
-                </table>
-              </div>
+              ${
+                showDiscrepant
+                  ? '<h4 class="group-detail-heading">Task-discrepant clusters</h4>' +
+                    (r.semanticIsCongruent ? "" : '<p class="manual-scored-note">' + MANUAL_SCORED_NOTE + "</p>") +
+                    '<div class="cluster-table-wrap"><table class="cluster-table">' +
+                    "<thead><tr><th>Words</th><th>Size</th><th>Rule applied</th></tr></thead>" +
+                    "<tbody>" + (r.taskDiscrepant ? renderClusterRows(r.taskDiscrepant.rows) : "") + "</tbody>" +
+                    "</table></div>"
+                  : ""
+              }
             </td>
           </tr>
         `;
