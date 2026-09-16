@@ -35,7 +35,7 @@ const VFT_DATA = {
       { label: "Temporal parameters", desc: "Score broken down by time segment (e.g. four 15-second windows).", requiresAudio: true },
       { label: "Mean phonemic cluster size", desc: "Average size of task-congruent, naturally occurring phonemic clusters." },
       { label: "Number of switches", desc: "Transitions between phonemic clusters, including single-word transitions." },
-      { label: "Number of task discrepant clusters", desc: "Semantic clusters found within this phonemic trial — a separate strategy the manual scores independently of phonemic (task-congruent) clustering." },
+      { label: "Number of task discrepant clusters", desc: "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial. Phonemic clusters for English are excluded from this prototype." },
     ],
     svf: [
       { label: "Total score", desc: "Sum of acceptable words generated in the trial, minus errors." },
@@ -43,7 +43,7 @@ const VFT_DATA = {
       { label: "Temporal parameters", desc: "Score broken down by time segment (e.g. four 15-second windows).", requiresAudio: true },
       { label: "Mean semantic cluster size", desc: "Average size of task-congruent, naturally occurring semantic clusters." },
       { label: "Number of switches", desc: "Transitions between semantic clusters, including single-word transitions." },
-      { label: "Number of task discrepant clusters", desc: "Phonemic clusters found within this semantic trial — a separate strategy the manual scores independently of semantic (task-congruent) clustering.", notYetBuilt: true },
+      { label: "Number of task discrepant clusters", desc: "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial. Phonemic clusters for English are excluded from this prototype.", notYetBuilt: true },
     ],
   },
 
@@ -69,7 +69,7 @@ const VFT_DATA = {
   // This is a translation, not published English data, and is labelled as
   // such wherever it appears. Note that phonemic clustering does NOT survive
   // translation — which is one reason the phonemic task-discrepant reading
-  // is not demonstrated for semantic trials.
+  // is not calculated for English semantic trials.
   // ---------------------------------------------------------------------
   translatedExample: {
     en: {
@@ -86,7 +86,7 @@ const VFT_DATA = {
   // ---------------------------------------------------------------------
   // SYNTHETIC DATA — for the batch / group-view demonstration only.
   //
-  // These 30 trials were generated for this prototype. They are NOT
+  // These trials (five per language) were generated for this prototype. They are NOT
   // participant data, NOT drawn from the dissertation dataset, and NOT
   // study results. They exist so the group-level view has a realistic
   // spread to aggregate, since the single-trial path reuses one worked
@@ -95,8 +95,8 @@ const VFT_DATA = {
   // No semantic scoring is stored for these trials. Semantic clustering is
   // the rater's job, so there is deliberately no stored answer anywhere in
   // this file. The phonemic (task-discrepant) reading is not stored either:
-  // it follows deterministic rules and is computed at runtime, exactly as
-  // the real tool would.
+  // it follows deterministic rules and is computed at runtime for Finnish,
+  // exactly as the real tool would. For English it is not calculated.
   //
   // The single-trial path uses `results` below, which is transcribed from
   // the published manual. The two are never mixed.

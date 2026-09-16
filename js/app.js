@@ -657,17 +657,60 @@
     return set ? set.length : 0;
   }
 
-  // Phonemic clustering is not implemented. A rule-based reading was
-  // prototyped and verified against Appendix A's worked example, but it was
-  // validated against Finnish only and cross-language phonemic clustering is
-  // phase-three work — so it is not shipped and not demonstrated. See commit
-  // ca0afb9 for that implementation.
-
-  // The task-discrepant reading in a semantic trial is phonemic. Phonemic
-  // clustering across languages is Phase 3 work, so it is not demonstrated:
-  // shown as unavailable rather than as a result the tool can stand behind.
+  // In a semantic trial the task-discrepant reading is phonemic. Phonemic
+  // clustering is rule-based, and the rule below reproduces the published
+  // task-discrepant reading in Appendix A's Finnish worked example exactly.
+  // It has only been checked against Finnish, so for English the reading is
+  // shown as not calculated — English rules are built in the English phase.
   function discrepantIsPhonemic(type) {
     return (type || state.taskType || "pvf") === "svf";
+  }
+
+  function phonemicDiscrepantUnavailable(type) {
+    return discrepantIsPhonemic(type) && (state.dataLanguage || "fi") !== "fi";
+  }
+
+  // Three or more consecutive words sharing an initial phoneme form a cluster
+  // (the manual's special rule for semantic fluency); exactly two consecutive
+  // words cluster when they share the same opening.
+  function buildPhonemicReading(words, errorIndices) {
+    const errorIdx = errorIndices || [];
+    const clusters = [];
+    const nonClustering = [];
+    let i = 0;
+
+    while (i < words.length) {
+      let j = i;
+      while (j + 1 < words.length && words[j + 1][0].toLowerCase() === words[i][0].toLowerCase()) j++;
+      const len = j - i + 1;
+      const opening = words[i].slice(0, 2).toLowerCase();
+      const isCluster = len >= 3 || (len === 2 && words[i + 1].slice(0, 2).toLowerCase() === opening);
+
+      if (isCluster) {
+        const slice = words.slice(i, j + 1);
+        clusters.push({
+          pos: i,
+          words: slice,
+          errorFlags: slice.map((w, k) => errorIdx.indexOf(i + k) !== -1),
+          rule:
+            len >= 3
+              ? "1.1 Word-initial phonemes — three or more consecutive words sharing an initial phoneme (special rule for semantic fluency)"
+              : "1.1 Word-initial phonemes (shared " + opening + "-)",
+        });
+      } else {
+        for (let k = i; k <= j; k++) nonClustering.push({ pos: k, word: words[k] });
+      }
+      i = j + 1;
+    }
+
+    const inClusters = clusters.reduce((a, c) => a + c.words.length, 0);
+    return {
+      clusters: clusters,
+      nonClusteringWords: nonClustering,
+      ambiguousCases: [],
+      count: clusters.length,
+      meanClusterSize: clusters.length ? Math.round((inClusters / clusters.length) * 10) / 10 : 0,
+    };
   }
 
   // Builds the standard trial shape from a bare word list.
@@ -719,7 +762,7 @@
       ambiguousCases: [],
       meanClusterSize: 0,
       switches: 0,
-      taskDiscrepant: null,
+      taskDiscrepant: phonemicDiscrepantUnavailable() ? null : buildPhonemicReading(src.words, src.errorIndices),
     };
   }
 
@@ -783,8 +826,11 @@
       const manual = buildManualReading(r, manualRanges);
       if (semanticIsCongruent(type)) {
         congruent = manual;
-        // The discrepant reading here is phonemic, which is not demonstrated.
-        discrepant = null;
+        // The discrepant reading here is phonemic and rule-based.
+        discrepant =
+          !phonemicDiscrepantUnavailable(type) && r.taskDiscrepant
+            ? resolveClusterReading(r.taskDiscrepant, resolutions)
+            : null;
       } else {
         congruent = resolveClusterReading(r, resolutions);
         discrepant = manual;
@@ -792,7 +838,7 @@
     } else {
       congruent = resolveClusterReading(r, resolutions);
       discrepant =
-        !discrepantIsPhonemic(type) && r.taskDiscrepant ? resolveClusterReading(r.taskDiscrepant, resolutions) : null;
+        !phonemicDiscrepantUnavailable(type) && r.taskDiscrepant ? resolveClusterReading(r.taskDiscrepant, resolutions) : null;
     }
 
     return { ...r, ...congruent, taskDiscrepant: discrepant, semanticIsCongruent: semanticIsCongruent(type) };
@@ -882,8 +928,8 @@
     }
     if (els.discrepantHelp) {
       els.discrepantHelp.textContent = r.taskDiscrepant
-        ? "Clusters from the other domain found within this trial (e.g. semantic clusters inside a phonemic trial) — scored separately from the clustering above, per the manual."
-        : "In a semantic trial the task-discrepant reading is phonemic. Phonemic clustering is not implemented yet, so it is not calculated in this prototype and is shown blank below to illustrate the intended output.";
+        ? "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial."
+        : "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial. Phonemic clusters for English are excluded from this prototype. Reading is shown blank below to illustrate the intended output.";
     }
 
     if (els.clusterManualNote) {
@@ -1233,7 +1279,8 @@
 
     list.innerHTML = values
       .map((v) => {
-        const unavailable = (v.requiresAudio && !hasAudio) || v.notYetBuilt;
+        const notYetBuilt = v.notYetBuilt && (state.dataLanguage || "fi") !== "fi";
+        const unavailable = (v.requiresAudio && !hasAudio) || notYetBuilt;
         return `
           <li class="value-item${unavailable ? " is-unavailable" : ""}">
             <span class="value-item-icon">${unavailable ? "–" : "✓"}</span>
@@ -1241,8 +1288,8 @@
               <span class="value-item-label">${v.label}</span>
               <span class="value-item-desc">${v.desc}</span>
               ${
-                v.notYetBuilt
-                  ? '<span class="value-item-note">Not implemented yet — not calculated in this prototype</span>'
+                notYetBuilt
+                  ? ""
                   : unavailable
                   ? '<span class="value-item-note">Needs audio — not available for transcript input</span>'
                   : ""
@@ -1264,8 +1311,7 @@
       'Appendix A of Lehtinen et al. (2023) — the instruction manual this tool implements.',
     translated:
       '<strong>Translated worked example.</strong> The manual\'s published worked example ' +
-      '(Appendix A, Lehtinen et al. 2023) translated word for word into English, so the English path ' +
-      'has a single trial to walk through. The published data itself is Finnish.',
+      '(Appendix A, Lehtinen et al. 2023) translated word for word into English.',
     synthetic:
       '<strong>Synthetic data — not participant data.</strong> These trials were generated for this ' +
       'prototype so the group view has a realistic spread to aggregate. They are not real responses, ' +
@@ -1345,7 +1391,7 @@
         ? "All " + batch.count + " trial" + (batch.count === 1 ? "" : "s") + " scored."
         : trials.length + " of " + batch.count + " trials scored — these statistics are incomplete.";
 
-    const showDiscrepant = !discrepantIsPhonemic(type);
+    const showDiscrepant = !phonemicDiscrepantUnavailable(type);
     const metrics = [
       { label: "Total score", dp: 1, get: (r) => r.totalScore },
       { label: "Errors", dp: 1, get: (r) => r.errors.length },
