@@ -64,7 +64,7 @@
     });
   });
 
-  // --- Step 3: fill in the manual's worked-example prompt -------------------
+  // --- Step 3: fill in the manual's sample-protocol prompt -------------------
   const btnUseExample = document.getElementById("btn-use-example-prompt");
   const staticExampleLabel = document.getElementById("prompt-example-static-label");
   const letterBtnGroup = document.getElementById("letter-btn-group");
@@ -204,12 +204,10 @@
 
   if (btnLoadExampleData) {
     btnLoadExampleData.addEventListener("click", () => {
-      const type = state.taskType || "pvf";
       if (usingSyntheticBatch()) {
-        setDropzoneLoaded("Loaded synthetic demo batch: " + syntheticTrialCount() + " trials");
+        setDropzoneLoaded("Loaded: " + syntheticTrialCount() + " synthetic transcripts");
       } else {
-        const filename = type === "pvf" ? "phonemic_letter-K_example.txt" : "semantic_animals_example.txt";
-        setDropzoneLoaded("Loaded the manual's example transcript: " + filename);
+        setDropzoneLoaded(translatedExample() ? "Loaded: translated sample protocol" : "Loaded: published sample protocol");
       }
     });
   }
@@ -377,7 +375,7 @@
           pos: rg.s,
           words,
           errorFlags,
-          rule: "Semantic cluster — manually scored",
+          rule: "Semantic cluster (manual)",
           reviewStatus: "manual",
         };
       });
@@ -519,7 +517,7 @@
     const reading = buildManualReading(trial, manualClusters);
     semanticLiveEl.innerHTML = reading.clusters.length
       ? `<strong>${reading.clusters.length}</strong> clusters · mean size <strong>${reading.meanClusterSize.toFixed(1)}</strong> · <strong>${reading.switches}</strong> switches · <strong>${reading.nonClustering.length}</strong> non-clustering words`
-      : "Nothing grouped yet — every word currently counts as a non-clustering single word.";
+      : "No clusters marked.";
   }
 
   function refreshSemanticStep() {
@@ -535,12 +533,11 @@
     if (manualDrag) finishDrag(false);
     manualClusters = saved ? saved.map((c) => ({ s: c.s, e: c.e })) : [];
 
-    renderProvenance(document.getElementById("provenance-scoring"), currentProvenance());
 
     const isBatch = batch.count > 1;
     const continueLabel = document.getElementById("continue-to-results-label");
     if (continueLabel) {
-      continueLabel.textContent = isBatch ? "See this trial's results" : "Continue to results";
+      continueLabel.textContent = isBatch ? "View trial results" : "View results";
     }
     const scoringCount = document.getElementById("scoring-step-count");
     if (scoringCount) {
@@ -554,13 +551,13 @@
 
     if (semanticLabelEl) {
       semanticLabelEl.textContent = semanticIsCongruent(type)
-        ? "Semantic clustering — task-congruent"
-        : "Semantic clustering — task-discrepant, within a phonemic trial";
+        ? "Task-congruent reading"
+        : "Task-discrepant reading";
     }
 
     if (cheatsheetListEl && !cheatsheetListEl.childElementCount) {
       cheatsheetListEl.innerHTML = (VFT_DATA.semanticRules || [])
-        .map((r) => `<li><span class="cheatsheet-rule">${r.n}</span><strong>${r.t}.</strong> ${r.d}</li>`)
+        .map((r) => `<li><strong>${r.b}</strong>${r.d}</li>`)
         .join("");
     }
 
@@ -619,7 +616,7 @@
 
   // Manually scored clusters carry `errorFlags` aligned to `words`, which is
   // exact even when the same word occurs twice in one cluster. Rule-based
-  // clusters from the manual's worked examples still match by word.
+  // clusters from the manual's sample protocols still match by word.
   // True for anything a human decided: a resolved ambiguous case, or a row
   // from the manually scored semantic reading.
   function isHumanScored(row) {
@@ -659,7 +656,7 @@
 
   // In a semantic trial the task-discrepant reading is phonemic. Phonemic
   // clustering is rule-based, and the rule below reproduces the published
-  // task-discrepant reading in Appendix A's Finnish worked example exactly.
+  // task-discrepant reading in Appendix A's Finnish sample protocol exactly.
   // It has only been checked against Finnish, so for English the reading is
   // shown as not calculated — English rules are built in the English phase.
   function discrepantIsPhonemic(type) {
@@ -694,7 +691,7 @@
           errorFlags: slice.map((w, k) => errorIdx.indexOf(i + k) !== -1),
           rule:
             len >= 3
-              ? "1.1 Word-initial phonemes — three or more consecutive words sharing an initial phoneme (special rule for semantic fluency)"
+              ? "1.1 Word-initial phoneme (three or more words, semantic task)"
               : "1.1 Word-initial phonemes (shared " + opening + "-)",
         });
       } else {
@@ -721,8 +718,8 @@
       errorIndices: src.errorIndices,
       errors: src.errorIndices.map((idx) => ({
         word: src.words[idx],
-        type: "Repetition — non-sequential",
-        note: 'Scored 0 for total score, but counted in its cluster (see "' + src.words[idx] + ' (error)" below).',
+        type: "Non-sequential repetition",
+        note: "Excluded from the total score; included in its cluster.",
       })),
       totalScore: src.totalScore,
       // The semantic (task-congruent) reading comes from the rater, so there
@@ -751,8 +748,8 @@
       errorIndices: src.errorIndices,
       errors: src.errorIndices.map((idx) => ({
         word: src.words[idx],
-        type: "Repetition — non-sequential",
-        note: 'Scored 0 for total score, but counted in its cluster (see "' + src.words[idx] + ' (error)" below).',
+        type: "Non-sequential repetition",
+        note: "Excluded from the total score; included in its cluster.",
       })),
       totalScore: src.totalScore,
       // The semantic (task-congruent) reading comes from the rater, so there
@@ -883,7 +880,7 @@
       .join("");
   }
 
-  const MANUAL_SCORED_NOTE = "Semantic clustering — scored manually by the rater.";
+  const MANUAL_SCORED_NOTE = "Scored manually.";
 
   // Renders one trial's results into a set of target elements. Group-level
   // aggregation is a separate view, so this is always a single trial.
@@ -904,7 +901,7 @@
       { value: r.switches, label: "Number of switches" },
       {
         value: r.taskDiscrepant ? r.taskDiscrepant.count : "N/A",
-        label: "Task discrepant clusters",
+        label: "Task-discrepant clusters",
         unavailable: !r.taskDiscrepant,
       },
     ];
@@ -929,7 +926,7 @@
     if (els.discrepantHelp) {
       els.discrepantHelp.textContent = r.taskDiscrepant
         ? "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial."
-        : "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial. Phonemic clusters for English are excluded from this prototype. Reading is shown blank below to illustrate the intended output.";
+        : "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial. Excluded from this prototype for English.";
     }
 
     if (els.clusterManualNote) {
@@ -983,7 +980,7 @@
           : trial.trialLabel,
     });
 
-    renderProvenance(document.getElementById("provenance-results"), currentProvenance());
+    renderProvenance(document.getElementById("provenance-results"), currentProvenance() === "synthetic" ? "synthetic" : null);
 
     const progress = document.getElementById("trial-progress-results");
     if (progress) {
@@ -1006,8 +1003,8 @@
     const note = document.getElementById("trial-results-note");
     if (note) {
       note.textContent = isLast
-        ? "This is the last trial in the batch. Group-level statistics and the download are on the next screen."
-        : "Scoring for this trial is saved. The download is available once every trial in the batch has been scored.";
+        ? ""
+        : "Trial saved. Download is available after the last trial.";
     }
   }
 
@@ -1195,7 +1192,7 @@
 
   // --- Step 6: batch is only offered where a demo batch exists -------------
   // The synthetic batch covers semantic trials only, so a phonemic batch
-  // would just repeat one worked example and report SD = 0 on every metric.
+  // would just repeat one sample protocol and report SD = 0 on every metric.
   function setCardAvailable(card, allowed, noteClass) {
     if (!card) return;
     const note = card.querySelector("." + noteClass);
@@ -1210,11 +1207,11 @@
     if (!grid) return;
 
     // A batch needs demo trials behind it; the single-trial path is the
-    // manual's published worked example, which exists in Finnish only.
+    // manual's published sample protocol, which exists in Finnish only.
     const batchAllowed = !!(VFT_DATA.illustrativeBatch[state.dataLanguage || "fi"] || {})[state.taskType];
     const singleTag = grid.querySelector('.choice-card[data-value="single"] .source-tag');
     if (singleTag) {
-      singleTag.textContent = (state.dataLanguage || "fi") === "fi" ? "Published worked example" : "Translated worked example";
+      singleTag.textContent = (state.dataLanguage || "fi") === "fi" ? "Published sample protocol" : "Translated sample protocol";
     }
     const lang = state.dataLanguage || "fi";
     const singleAllowed = lang === "fi" || !!((VFT_DATA.translatedExample[lang] || {})[state.taskType]);
@@ -1231,7 +1228,7 @@
     recomputeTrialsReady();
   }
 
-  // Phonemic trials have no demo batch, and the published worked example is
+  // Phonemic trials have no demo batch, and the published sample protocol is
   // Finnish — so under English there is nothing behind a phonemic trial.
   function updateTaskTypeAvailability() {
     const grid = document.querySelector('.choice-grid[data-field="taskType"]');
@@ -1254,18 +1251,18 @@
     const loadLabel = document.getElementById("load-example-label");
     if (loadLabel) {
       loadLabel.textContent = usingSyntheticBatch()
-        ? "For demonstration purposes, load the " + syntheticTrialCount() + " synthetic demo transcripts here."
-        : "For demonstration purposes, load the manual's example transcript here.";
+        ? "Load the synthetic transcripts"
+        : translatedExample()
+          ? "Load the translated sample protocol"
+          : "Load the published sample protocol";
     }
     if (state.trialMode === "multiple") {
-      title.textContent = "Add this batch's transcripts";
+      title.textContent = "Import transcripts";
       help.textContent =
-        "This batch has " +
-        state.trialCount +
-        " trials, all responses to the prompt you shared, from one participant group. Import them all here — you will then score the semantic clustering one trial at a time.";
+        "Import all " + state.trialCount + " transcripts in the batch. Semantic clustering is then scored one trial at a time.";
     } else {
-      title.textContent = "Add your transcript";
-      help.textContent = "Import a transcript file below.";
+      title.textContent = "Import transcript";
+      help.textContent = "Import one transcript file.";
     }
   }
 
@@ -1289,9 +1286,9 @@
               <span class="value-item-desc">${v.desc}</span>
               ${
                 notYetBuilt
-                  ? ""
+                  ? '<span class="value-item-note">Excluded from this prototype for English</span>'
                   : unavailable
-                  ? '<span class="value-item-note">Needs audio — not available for transcript input</span>'
+                  ? '<span class="value-item-note">Requires audio. Excluded from this prototype.</span>'
                   : ""
               }
             </span>
@@ -1303,23 +1300,27 @@
 
   // --- Data provenance ------------------------------------------------------
   // Every screen that shows numbers states where those numbers came from, so
-  // the published worked example and the synthetic demo batch can never be
+  // the published sample protocol and the synthetic demo batch can never be
   // mistaken for one another.
   const PROVENANCE = {
     manual:
-      '<strong>Published data.</strong> This trial is the worked example transcribed directly from ' +
-      'Appendix A of Lehtinen et al. (2023) — the instruction manual this tool implements.',
+      '<strong>Published data.</strong> Sample protocol from Appendix A of Lehtinen et al. (2023).',
     translated:
-      '<strong>Translated worked example.</strong> The manual\'s published worked example ' +
+      '<strong>Translated sample protocol.</strong> The manual\'s published sample protocol ' +
       '(Appendix A, Lehtinen et al. 2023) translated word for word into English.',
     synthetic:
-      '<strong>Synthetic data — not participant data.</strong> These trials were generated for this ' +
-      'prototype so the group view has a realistic spread to aggregate. They are not real responses, ' +
-      'not from the dissertation dataset, and not study results.',
+      '<strong>Synthetic data.</strong> These trials were generated for this prototype. ' +
+      'They are not participant data or study results.',
   };
 
+  // Passing no kind clears the banner.
   function renderProvenance(el, kind) {
     if (!el) return;
+    if (!kind) {
+      el.className = "provenance";
+      el.innerHTML = "";
+      return;
+    }
     const variant = kind === "synthetic" ? "is-synthetic" : kind === "translated" ? "is-translated" : "is-manual";
     el.className = "provenance " + variant;
     el.innerHTML = PROVENANCE[kind];
@@ -1381,15 +1382,12 @@
     groupContentEl.hidden = false;
 
     const type = state.taskType || "pvf";
-    renderProvenance(
-      document.getElementById("provenance-group"),
-      trials[0].result.synthetic ? "synthetic" : trials[0].result.translated ? "translated" : "manual"
-    );
+    renderProvenance(document.getElementById("provenance-group"), trials[0].result.synthetic ? "synthetic" : null);
     groupBadgeEl.textContent = trials[0].result.trialLabel;
     groupProgressEl.textContent =
       trials.length === batch.count
         ? "All " + batch.count + " trial" + (batch.count === 1 ? "" : "s") + " scored."
-        : trials.length + " of " + batch.count + " trials scored — these statistics are incomplete.";
+        : trials.length + " of " + batch.count + " trials scored. Results are incomplete.";
 
     const showDiscrepant = !phonemicDiscrepantUnavailable(type);
     const metrics = [
@@ -1399,7 +1397,7 @@
       { label: "Number of switches", dp: 1, get: (r) => r.switches },
     ];
     if (showDiscrepant) {
-      metrics.push({ label: "Task discrepant clusters", dp: 1, get: (r) => (r.taskDiscrepant ? r.taskDiscrepant.count : 0) });
+      metrics.push({ label: "Task-discrepant clusters", dp: 1, get: (r) => (r.taskDiscrepant ? r.taskDiscrepant.count : 0) });
     }
 
     groupStatGridEl.innerHTML = metrics

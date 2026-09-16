@@ -1,4 +1,4 @@
-// Worked-example content sourced directly from Appendix A (Lehtinen et al., 2023,
+// Sample-protocol content sourced directly from Appendix A (Lehtinen et al., 2023,
 // Applied Neuropsychology: Adult — Instruction Manual for Administration and
 // Scoring Verbal Fluency Tasks). Used to drive the scripted demo walkthrough.
 
@@ -30,39 +30,38 @@ const VFT_DATA = {
   // Step 5: values the tool will calculate, shown for review before running.
   scoredValues: {
     pvf: [
-      { label: "Total score", desc: "Sum of acceptable words generated in the trial, minus errors." },
-      { label: "Errors", desc: "Repetitions, categorical errors (out-of-category or rule-break), paraphasias and nonwords." },
-      { label: "Temporal parameters", desc: "Score broken down by time segment (e.g. four 15-second windows).", requiresAudio: true },
-      { label: "Mean phonemic cluster size", desc: "Average size of task-congruent, naturally occurring phonemic clusters." },
-      { label: "Number of switches", desc: "Transitions between phonemic clusters, including single-word transitions." },
-      { label: "Number of task discrepant clusters", desc: "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial. Phonemic clusters for English are excluded from this prototype." },
+      { label: "Total score", desc: "Number of words produced, excluding errors." },
+      { label: "Errors", desc: "Repetitions, categorical errors, paraphasias and nonwords." },
+      { label: "Temporal parameters", desc: "Words produced in each of four 15-second segments.", requiresAudio: true },
+      { label: "Mean phonemic cluster size", desc: "Mean size of naturally occurring phonemic clusters." },
+      { label: "Number of switches", desc: "Transitions between clusters, including transitions between single words." },
+      { label: "Number of task-discrepant clusters", desc: "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial." },
     ],
     svf: [
-      { label: "Total score", desc: "Sum of acceptable words generated in the trial, minus errors." },
-      { label: "Errors", desc: "Repetitions, categorical errors (out-of-category or rule-break), paraphasias and nonwords." },
-      { label: "Temporal parameters", desc: "Score broken down by time segment (e.g. four 15-second windows).", requiresAudio: true },
-      { label: "Mean semantic cluster size", desc: "Average size of task-congruent, naturally occurring semantic clusters." },
-      { label: "Number of switches", desc: "Transitions between semantic clusters, including single-word transitions." },
-      { label: "Number of task discrepant clusters", desc: "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial. Phonemic clusters for English are excluded from this prototype.", notYetBuilt: true },
+      { label: "Total score", desc: "Number of words produced, excluding errors." },
+      { label: "Errors", desc: "Repetitions, categorical errors, paraphasias and nonwords." },
+      { label: "Temporal parameters", desc: "Words produced in each of four 15-second segments.", requiresAudio: true },
+      { label: "Mean semantic cluster size", desc: "Mean size of naturally occurring semantic clusters." },
+      { label: "Number of switches", desc: "Transitions between clusters, including transitions between single words." },
+      { label: "Number of task-discrepant clusters", desc: "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial.", notYetBuilt: true },
     ],
   },
 
-  // The main clustering rules, shown as a cheat sheet while scoring by hand.
-  // Condensed from Appendix A §2; the full text lives in the Scoring Rules tab.
+  // Quick guide shown while scoring by hand. The full rules live in the
+  // Scoring Rules tab. Each entry renders as a bold lead followed by the rest.
   semanticRules: [
-    { n: "2", t: "What counts as a cluster", d: "Two or more successively generated words belonging to the same semantic subcategory — taxonomic (birds), environmental (farm animals), geographical (African animals) or visual (snake, eel)." },
-    { n: "2.1", t: "Three or more words", d: "Three or more words belonging to the same subgroup always form a cluster." },
-    { n: "2.2", t: "Exactly two words", d: "Two words form a cluster only when they are not surrounded by words from a more overarching category — otherwise they join the larger cluster." },
-    { n: "2.3", t: "Associations are not clusters", d: "Antonyms included. Test: if more words could be added to the category, it is a cluster; if not, it is an association." },
-    { n: "—", t: "Overlaps", d: "A word connecting two clusters belongs to the first one only, and is never counted twice." },
+    { b: "Three or more words", d: " from the same semantic subcategory always form a cluster." },
+    { b: "Two words.", d: " Two words form a cluster when the neighboring words do not belong to a broader category." },
+    { b: "Associations.", d: " Associations, including antonyms, are not clusters. If further words could be added to the category, the words form a cluster." },
+    { b: "Overlaps.", d: " A word linking two clusters belongs to the first cluster only." },
   ],
 
 
 
   // ---------------------------------------------------------------------
-  // TRANSLATED WORKED EXAMPLE — English single-trial walkthrough.
+  // TRANSLATED SAMPLE PROTOCOL — English single-trial walkthrough.
   //
-  // The manual's worked example word for word in English, so the English
+  // The manual's sample protocol word for word in English, so the English
   // path has a single trial to walk through. The semantic structure carries
   // over intact, so the same clustering decisions arise for the rater.
   //
@@ -89,8 +88,8 @@ const VFT_DATA = {
   // These trials (five per language) were generated for this prototype. They are NOT
   // participant data, NOT drawn from the dissertation dataset, and NOT
   // study results. They exist so the group-level view has a realistic
-  // spread to aggregate, since the single-trial path reuses one worked
-  // example and would otherwise show SD = 0 on every metric.
+  // spread to aggregate, since the single-trial path reuses one sample
+  // protocol and would otherwise show SD = 0 on every metric.
   //
   // No semantic scoring is stored for these trials. Semantic clustering is
   // the rater's job, so there is deliberately no stored answer anywhere in
@@ -123,7 +122,7 @@ const VFT_DATA = {
   },
 
   // Step 7: canned results for the "Load example data" path, reproducing the
-  // manual's own worked examples (Appendix A, sample protocols section).
+  // manual's own sample protocols (Appendix A).
   // Cluster breakdowns transcribed directly from the manual's tables; total
   // score, errors, and switches independently derived from the same word
   // sequence and cross-checked against the manual's stated mean cluster size.
@@ -132,7 +131,7 @@ const VFT_DATA = {
       trialLabel: "Phonemic (PVF) — letter K",
       words: ["kissa", "komea", "koiras", "kaamea", "kurkkia", "kynä", "kumi", "kaunis", "komea", "korea", "kauhea", "kamala", "karu", "karkki", "karhea", "kauha", "kippo", "kuppi", "kurki", "kirjosieppo"],
       totalScore: 19,
-      errors: [{ word: "komea", type: "Repetition — non-sequential", note: "Scored 0 for total score, but counted in its cluster (see \"komea (error)\" below)." }],
+      errors: [{ word: "komea", type: "Non-sequential repetition", note: "Excluded from the total score; included in its cluster." }],
       // Index in `words` of each error, so a manually scored cluster can tag
       // the right occurrence (here the 2nd "komea", not the 1st).
       errorIndices: [8],
@@ -164,7 +163,7 @@ const VFT_DATA = {
       // Task-discrepant clustering: semantic clusters found within this
       // phonemic trial (a separate reading of the same word list, scored
       // independently per the manual). Straight from Appendix A's "Task
-      // Discrepant Clustering in Phonemic Category /k/" worked example.
+      // Discrepant Clustering in Phonemic Category /k/" sample protocol.
       taskDiscrepant: {
         count: 5,
         meanClusterSize: 2.6,
@@ -217,7 +216,7 @@ const VFT_DATA = {
       trialLabel: "Semantic (SVF) — category Animals",
       words: ["koira", "kissa", "hevonen", "hämähäkki", "kärpänen", "käärme", "ankerias", "hevonen", "lehmä", "vasikka", "sika", "kana", "kirjosieppo", "kuikka", "pelikaani", "joutsen", "varpunen", "hamsteri", "rotta", "hiiri", "orava"],
       totalScore: 20,
-      errors: [{ word: "hevonen", type: "Repetition — non-sequential", note: "Scored 0 for total score, but counted in its cluster (see \"hevonen (error)\" below)." }],
+      errors: [{ word: "hevonen", type: "Non-sequential repetition", note: "Excluded from the total score; included in its cluster." }],
       // Index in `words` of each error — here the 2nd "hevonen", not the 1st.
       errorIndices: [7],
       // Defaults (option "a" below) — used until a human resolves the flagged case.
@@ -240,7 +239,7 @@ const VFT_DATA = {
         { pos: 12, word: "kirjosieppo" },
         { pos: 16, word: "varpunen" },
       ],
-      // Straight from the manual's own worked example (Appendix A): both
+      // Straight from the manual's own sample protocol (Appendix A): both
       // readings of this cluster are explicitly listed as acceptable.
       ambiguousCases: [
         {
@@ -273,7 +272,7 @@ const VFT_DATA = {
 
       // Task-discrepant clustering: phonemic clusters found within this
       // semantic trial. Straight from Appendix A's "Task Discrepant
-      // Clustering in Semantic Category 'Animals'" worked example — no
+      // Clustering in Semantic Category 'Animals'" sample protocol — no
       // ambiguous case is documented for this particular reading.
       taskDiscrepant: {
         count: 2,
