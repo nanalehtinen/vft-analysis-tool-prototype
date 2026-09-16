@@ -401,42 +401,116 @@
     return { clusters, nonClustering, rows, meanClusterSize, switches, count: clusters.length };
   }
 
-  function renderSemanticTranscript() {
-    const trial = currentTrial();
-    if (!trial || !semanticTxEl) return;
+  // The word list is built once per trial and then only repainted. Rebuilding
+  // it mid-drag would destroy the element under the pointer, and browsers
+  // handle a pressed element disappearing inconsistently — releases get lost.
+  let builtWords = null;
+
+  function buildSemanticTranscript(trial) {
     const errorIdx = trial.errorIndices || [];
-
-    const dragLo = manualDrag ? Math.min(manualDrag.anchor, manualDrag.cur) : -1;
-    const dragHi = manualDrag ? Math.max(manualDrag.anchor, manualDrag.cur) : -2;
-
     semanticTxEl.innerHTML = "";
     trial.words.forEach((w, i) => {
-      const ci = clusterIndexAt(i);
       const chip = document.createElement("span");
-      const cls = ["semantic-word"];
-
-      if (i >= dragLo && i <= dragHi) {
-        cls.push("in-drag");
-      } else if (ci !== -1) {
-        cls.push("in-cluster");
-        const c = manualClusters[ci];
-        if (i === c.s) cls.push("at-start");
-        else if (i === c.e) cls.push("at-end");
-        else cls.push("at-mid");
-      }
-
-      chip.className = cls.join(" ");
+      chip.className = "semantic-word";
       chip.dataset.i = i;
       chip.innerHTML = w + (errorIdx.indexOf(i) !== -1 ? ' <span class="err">(error)</span>' : "");
       semanticTxEl.appendChild(chip);
 
       if (i < trial.words.length - 1) {
         const sep = document.createElement("span");
-        const sameCluster = ci !== -1 && ci === clusterIndexAt(i + 1);
-        sep.className = "semantic-sep" + (sameCluster ? " inside" : "");
+        sep.className = "semantic-sep";
+        sep.dataset.after = i;
         semanticTxEl.appendChild(sep);
       }
     });
+    builtWords = trial.words;
+  }
+
+  function paintSemanticTranscript() {
+    const dragLo = manualDrag ? Math.min(manualDrag.anchor, manualDrag.cur) : -1;
+    const dragHi = manualDrag ? Math.max(manualDrag.anchor, manualDrag.cur) : -2;
+
+    semanticTxEl.querySelectorAll(".semantic-word").forEach((chip) => {
+      const i = Number(chip.dataset.i);
+      const dragging = i >= dragLo && i <= dragHi;
+      const ci = dragging ? -1 : clusterIndexAt(i);
+      const c = ci !== -1 ? manualClusters[ci] : null;
+      chip.classList.toggle("in-drag", dragging);
+      chip.classList.toggle("in-cluster", !!c);
+      chip.classList.toggle("at-start", !!c && i === c.s);
+      chip.classList.toggle("at-end", !!c && i === c.e);
+      chip.classList.toggle("at-mid", !!c && i !== c.s && i !== c.e);
+    });
+
+    // Members of one cluster sit flush, so the run reads as one block.
+    semanticTxEl.querySelectorAll(".semantic-sep").forEach((sep) => {
+      const i = Number(sep.dataset.after);
+      const ci = clusterIndexAt(i);
+      sep.classList.toggle("inside", ci !== -1 && ci === clusterIndexAt(i + 1));
+    });
+  }
+
+  function renderSemanticTranscript() {
+    const trial = currentTrial();
+    if (!trial || !semanticTxEl) return;
+    if (builtWords !== trial.words) buildSemanticTranscript(trial);
+    paintSemanticTranscript();
+  }
+
+  // --- Dragging a cluster ---------------------------------------------------
+  // Pointer events with pointer capture: once a word is pressed, the word list
+  // receives every move and the release, even if the pointer leaves it or the
+  // pane. That also makes touch and stylus work.
+  function wordIndexAt(x, y) {
+    const el = document.elementFromPoint(x, y);
+    const chip = el && el.closest ? el.closest(".semantic-word") : null;
+    return chip && semanticTxEl.contains(chip) ? Number(chip.dataset.i) : null;
+  }
+
+  // Ends the drag. `commit` false discards it (Escape, a cancelled pointer,
+  // switching away from the window).
+  function finishDrag(commit) {
+    if (!manualDrag) return;
+    const drag = manualDrag;
+    manualDrag = null;
+
+    try {
+      if (semanticTxEl.hasPointerCapture(drag.pointerId)) {
+        semanticTxEl.releasePointerCapture(drag.pointerId);
+      }
+    } catch (err) {
+      // Capture was already released by the browser.
+    }
+
+    if (commit) {
+      const lo = Math.min(drag.anchor, drag.cur);
+      const hi = Math.max(drag.anchor, drag.cur);
+      if (hi > lo) {
+        addManualCluster(lo, hi);
+      } else {
+        // A plain click or tap dissolves the cluster under it.
+        const ci = clusterIndexAt(lo);
+        if (ci !== -1) manualClusters.splice(ci, 1);
+      }
+    }
+    refreshSemanticStep();
+  }
+
+  function onDragMove(e) {
+    if (!manualDrag || e.pointerId !== manualDrag.pointerId) return;
+
+    // No button held means the release happened but never reached the page
+    // (seen with a Mac touchpad). End the drag with what was selected while
+    // the button was still down, instead of letting hovers extend it.
+    if (e.pointerType === "mouse" && e.buttons === 0) {
+      finishDrag(true);
+      return;
+    }
+
+    const i = wordIndexAt(e.clientX, e.clientY);
+    if (i === null || i === manualDrag.cur) return;
+    manualDrag.cur = i;
+    paintSemanticTranscript();
   }
 
   function renderSemanticLive() {
@@ -458,8 +532,8 @@
     // Reload whatever this trial was scored as before, so going back to a
     // trial shows the rater's own work rather than a blank slate.
     const saved = batch.scored[batch.current];
+    if (manualDrag) finishDrag(false);
     manualClusters = saved ? saved.map((c) => ({ s: c.s, e: c.e })) : [];
-    manualDrag = null;
 
     renderProvenance(document.getElementById("provenance-scoring"), currentProvenance());
 
@@ -497,35 +571,42 @@
   }
 
   if (semanticTxEl) {
-    semanticTxEl.addEventListener("mousedown", (e) => {
+    semanticTxEl.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
       const chip = e.target.closest(".semantic-word");
       if (!chip) return;
       e.preventDefault();
-      manualDrag = { anchor: +chip.dataset.i, cur: +chip.dataset.i };
-      renderSemanticTranscript();
-    });
+      // A drag that never ended properly is dropped, not merged into this one.
+      if (manualDrag) finishDrag(false);
 
-    semanticTxEl.addEventListener("mouseover", (e) => {
-      if (!manualDrag) return;
-      const chip = e.target.closest(".semantic-word");
-      if (!chip) return;
-      manualDrag.cur = +chip.dataset.i;
-      renderSemanticTranscript();
-    });
-
-    document.addEventListener("mouseup", () => {
-      if (!manualDrag) return;
-      const lo = Math.min(manualDrag.anchor, manualDrag.cur);
-      const hi = Math.max(manualDrag.anchor, manualDrag.cur);
-      if (hi > lo) {
-        addManualCluster(lo, hi);
-      } else {
-        // A plain click dissolves the cluster under it.
-        const ci = clusterIndexAt(lo);
-        if (ci !== -1) manualClusters.splice(ci, 1);
+      manualDrag = { anchor: Number(chip.dataset.i), cur: Number(chip.dataset.i), pointerId: e.pointerId };
+      try {
+        semanticTxEl.setPointerCapture(e.pointerId);
+      } catch (err) {
+        // Without capture, the document-level listeners below still end it.
       }
-      manualDrag = null;
-      refreshSemanticStep();
+      paintSemanticTranscript();
+    });
+
+    // Captured events bubble to the document, so these also act as the
+    // backstop when capture is unavailable.
+    document.addEventListener("pointermove", onDragMove);
+    document.addEventListener("pointerup", (e) => {
+      if (manualDrag && e.pointerId === manualDrag.pointerId) finishDrag(true);
+    });
+    document.addEventListener("pointercancel", (e) => {
+      if (manualDrag && e.pointerId === manualDrag.pointerId) finishDrag(false);
+    });
+    semanticTxEl.addEventListener("lostpointercapture", (e) => {
+      if (manualDrag && e.pointerId === manualDrag.pointerId) finishDrag(true);
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") finishDrag(false);
+    });
+    window.addEventListener("blur", () => finishDrag(false));
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) finishDrag(false);
     });
   }
 

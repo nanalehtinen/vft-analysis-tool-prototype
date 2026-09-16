@@ -11,7 +11,7 @@
 <header class="topbar">
   <div class="brand">
     <span class="brand-mark" aria-hidden="true">VF</span>
-    <span class="brand-name">VFT Analysis Tool</span>
+    <span class="brand-name">VFT Scoring Tool</span>
   </div>
   <div class="header-reference" id="header-reference">Lehtinen, N., Luotonen, I., &amp; Kautto, A. (2023). Systematic administration and analysis of verbal fluency tasks: Preliminary evidence for reliable exploration of processes underlying task performance. <em>Applied Neuropsychology: Adult, 30</em>(6), 727&ndash;739. <a href="https://doi.org/10.1080/23279095.2021.1973471" target="_blank" rel="noopener">https://doi.org/10.1080/23279095.2021.1973471</a></div>
 </header>
@@ -36,22 +36,28 @@
     <div class="start-intro" id="start-intro">
       <div class="step-card">
         <p class="start-intro-text">
-          This is a prototype for a research tool for detailed scoring of verbal fluency task (VFT) performance: total score, errors, temporal parameters, and clustering and switching.
+          This prototype demonstrates a research tool for detailed scoring of verbal fluency task (VFT) performance based on the <em>Instruction Manual for Administration and Scoring Verbal Fluency Tasks</em> published in:
+        </p>
+        <p class="start-intro-text start-intro-citation">
+          Lehtinen, N., Luotonen, I., &amp; Kautto, A. (2023). Systematic administration and analysis of verbal fluency tasks: Preliminary evidence for reliable exploration of processes underlying task performance. <em>Applied Neuropsychology: Adult, 30</em>(6), 727&ndash;739.
         </p>
         <p class="start-intro-text">
-          Components fully specified by deterministic rules are scored automatically; decisions involving semantic or linguistic interpretation are made by the researcher through a structured interface.
+          The scoring protocol includes total score, errors, temporal parameters, and clustering and switching measures for naturally occurring clusters.
         </p>
         <p class="start-intro-text">
-          Uploaded data is processed locally and offline (on device), supporting GDPR-compliant data processing.
-        </p>
-        <p class="start-intro-text start-intro-caveat">
-          This prototype demonstrates the intended workflow and interface. It does not yet include the validated analysis engine — the results shown are the manual's own published worked examples.
+          This tool utilizes automatic scoring for components fully specified by deterministic rules. Decisions requiring semantic or linguistic interpretation are surfaced for manual scoring through a structured interface.
         </p>
         <p class="start-intro-text">
-          Please see the <a href="#" class="inline-link" data-goto-tab="guidance">Guidance</a> tab for a full walkthrough, and the <a href="#" class="inline-link" data-goto-tab="rules">Scoring Rules</a> tab for how scoring works and the full manual.
+          Data is processed locally and offline (on device), supporting GDPR-compliant data processing.
+        </p>
+        <p class="start-intro-text">
+          Please see the <a href="#" class="inline-link" data-goto-tab="guidance">Guidance</a> tab for a walkthrough of the tool, and the <a href="#" class="inline-link" data-goto-tab="rules">Scoring Rules</a> tab for scoring guidance and the full scoring manual.
         </p>
         <p class="start-intro-text">When you are ready to try the workflow, tap the button below.</p>
         <button type="button" class="btn btn-primary" id="btn-start-wizard">Start Here →</button>
+        <p class="start-intro-text start-intro-caveat">
+          This prototype demonstrates the intended workflow and interface. It does not include the validated analysis engine. Single trials use the manual's published worked example (translated for the English path), and batches use synthetic demo data.
+        </p>
       </div>
     </div>
 

@@ -172,6 +172,14 @@ button { font-family: inherit; }
   color: var(--text);
 }
 
+/* The reference the intro points to, set off as a citation. */
+.start-intro-citation {
+  padding-left: 16px;
+  border-left: 3px solid var(--primary);
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
 /* Scope caveat — reads as a note, not body copy. */
 .start-intro-caveat {
   padding: 14px 16px;
@@ -180,6 +188,11 @@ button { font-family: inherit; }
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   font-size: 14px;
   color: var(--text-muted);
+}
+
+/* Sits below the Start Here button, so it needs space above, not below. */
+.btn + .start-intro-caveat {
+  margin: 24px 0 0;
 }
 
 /* Wizard */
@@ -900,6 +913,8 @@ button { font-family: inherit; }
   margin: 16px 0 8px;
   user-select: none;
   -webkit-user-select: none;
+  /* Touch and stylus drags select words instead of scrolling the page. */
+  touch-action: none;
 }
 
 .semantic-word {
