@@ -27,29 +27,35 @@ const VFT_DATA = {
     en: ["F", "A", "S"],
   },
 
-  // Step 5: values the tool will calculate, shown for review before running.
+  // The measures, as listed on the automated-analysis screen after import.
+  // `key` decides whether each one is automated or manual for a task type.
   scoredValues: {
     pvf: [
-      { label: "Total score", desc: "Number of words produced, excluding errors." },
-      { label: "Errors", desc: "Repetitions, categorical errors, paraphasias and nonwords." },
-      { label: "Temporal parameters", desc: "Words produced in each of four 15-second segments.", requiresAudio: true },
-      { label: "Mean phonemic cluster size", desc: "Mean size of naturally occurring phonemic clusters." },
-      { label: "Number of switches", desc: "Transitions between clusters, including transitions between single words." },
-      { label: "Number of task-discrepant clusters", desc: "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial." },
+      { key: "total", label: "Total score", desc: "Number of words produced, excluding errors." },
+      { key: "errors", label: "Errors", desc: "Repetitions, categorical errors, paraphasias and nonwords, and language intrusions for multilingual populations." },
+      { key: "temporal", label: "Temporal parameters", desc: "Words produced in each of four 15-second segments.", requiresAudio: true },
+      { key: "count", label: "Number of phonemic clusters", desc: "Number of naturally occurring phonemic clusters." },
+      { key: "clusterSize", label: "Mean phonemic cluster size", desc: "Mean size of naturally occurring phonemic clusters." },
+      { key: "switches", label: "Number of switches", desc: "Transitions between clusters, including transitions between single words." },
+      { key: "discrepant", label: "Number of task-discrepant clusters", desc: "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial." },
+      { key: "discrepantSize", label: "Mean task-discrepant cluster size", desc: "Mean size of task-discrepant clusters." },
     ],
     svf: [
-      { label: "Total score", desc: "Number of words produced, excluding errors." },
-      { label: "Errors", desc: "Repetitions, categorical errors, paraphasias and nonwords." },
-      { label: "Temporal parameters", desc: "Words produced in each of four 15-second segments.", requiresAudio: true },
-      { label: "Mean semantic cluster size", desc: "Mean size of naturally occurring semantic clusters." },
-      { label: "Number of switches", desc: "Transitions between clusters, including transitions between single words." },
-      { label: "Number of task-discrepant clusters", desc: "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial.", notYetBuilt: true },
+      { key: "total", label: "Total score", desc: "Number of words produced, excluding errors." },
+      { key: "errors", label: "Errors", desc: "Repetitions, categorical errors, paraphasias and nonwords, and language intrusions for multilingual populations." },
+      { key: "temporal", label: "Temporal parameters", desc: "Words produced in each of four 15-second segments.", requiresAudio: true },
+      { key: "count", label: "Number of semantic clusters", desc: "Number of naturally occurring semantic clusters." },
+      { key: "clusterSize", label: "Mean semantic cluster size", desc: "Mean size of naturally occurring semantic clusters." },
+      { key: "switches", label: "Number of switches", desc: "Transitions between clusters, including transitions between single words." },
+      { key: "discrepant", label: "Number of task-discrepant clusters", desc: "Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial." },
+      { key: "discrepantSize", label: "Mean task-discrepant cluster size", desc: "Mean size of task-discrepant clusters." },
     ],
   },
 
   // Quick guide shown while scoring by hand. The full rules live in the
   // Scoring Rules tab. Each entry renders as a bold lead followed by the rest.
   semanticRules: [
+    { b: "Smallest possible cluster.", d: " Score the smallest possible clusters so that all clusters the participant generates are tracked." },
     { b: "Three or more words", d: " from the same semantic subcategory always form a cluster." },
     { b: "Two words.", d: " Two words form a cluster when the neighboring words do not belong to a broader category." },
     { b: "Associations.", d: " Associations, including antonyms, are not clusters. If further words could be added to the category, the words form a cluster." },
@@ -161,7 +167,7 @@ const VFT_DATA = {
       trialLabel: "Phonemic (PVF) — letter K",
       words: ["kissa", "komea", "koiras", "kaamea", "kurkkia", "kynä", "kumi", "kaunis", "komea", "korea", "kauhea", "kamala", "karu", "karkki", "karhea", "kauha", "kippo", "kuppi", "kurki", "kirjosieppo"],
       totalScore: 19,
-      errors: [{ word: "komea", type: "Non-sequential repetition", note: "Excluded from the total score; included in its cluster." }],
+      errors: [{ word: "komea", type: "Non-sequential repetition", note: "Excluded from the total score; can be counted in a cluster." }],
       // Index in `words` of each error, so a manually scored cluster can tag
       // the right occurrence (here the 2nd "komea", not the 1st).
       errorIndices: [8],
@@ -246,7 +252,7 @@ const VFT_DATA = {
       trialLabel: "Semantic (SVF) — category Animals",
       words: ["koira", "kissa", "hevonen", "hämähäkki", "kärpänen", "käärme", "ankerias", "hevonen", "lehmä", "vasikka", "sika", "kana", "kirjosieppo", "kuikka", "pelikaani", "joutsen", "varpunen", "hamsteri", "rotta", "hiiri", "orava"],
       totalScore: 20,
-      errors: [{ word: "hevonen", type: "Non-sequential repetition", note: "Excluded from the total score; included in its cluster." }],
+      errors: [{ word: "hevonen", type: "Non-sequential repetition", note: "Excluded from the total score; can be counted in a cluster." }],
       // Index in `words` of each error — here the 2nd "hevonen", not the 1st.
       errorIndices: [7],
       // Defaults (option "a" below) — used until a human resolves the flagged case.

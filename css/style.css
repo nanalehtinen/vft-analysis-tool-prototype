@@ -767,6 +767,18 @@ button { font-family: inherit; }
   color: var(--text);
 }
 
+/* The step that follows the automated analysis. */
+.ready-next {
+  margin: 22px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ready-next[hidden] { display: none; }
+
 /* --- Data provenance ---------------------------------------------------- */
 /* Stated on every screen that shows numbers, so published and synthetic data
    can never be confused. */
@@ -828,7 +840,9 @@ button { font-family: inherit; }
 }
 
 .trial-mode-note[hidden],
-.task-type-note[hidden] { display: none; }
+.task-type-note[hidden],
+.discrepant-note[hidden] { display: none; }
+
 
 /* --- Group results ------------------------------------------------------ */
 .group-stat-grid {

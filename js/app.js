@@ -8,6 +8,8 @@
     trialCount: 5,
     trialsReady: false,
     letter: "K",
+    // "yes" / "no", chosen in step 5.
+    includeDiscrepant: null,
   };
 
   function goToTab(name) {
@@ -168,6 +170,7 @@
   const step7Input = document.getElementById("step7-input");
   const step7Review = document.getElementById("step7-review");
   const step7Results = document.getElementById("step7-results");
+  const step7Ready = document.getElementById("step7-ready");
   // Resolutions for ambiguous cases in the rule-based (phonemic) reading.
   // Semantic ambiguity is no longer resolved this way — the rater scores the
   // semantic reading themselves in step 8 — so in practice this stays empty.
@@ -244,20 +247,38 @@
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(apply);
   }
 
+  function showStep7Screen(screen) {
+    step7Input.hidden = screen !== step7Input;
+    step7Ready.hidden = screen !== step7Ready;
+    step7Review.hidden = screen !== step7Review;
+    step7Results.hidden = screen !== step7Results;
+    scrollToWizardTop();
+  }
+
+  function showReadyScreen() {
+    renderReadyScreen();
+    showStep7Screen(step7Ready);
+  }
+
   function showScoringScreen() {
     renderReviewStep();
-    step7Input.hidden = true;
-    step7Review.hidden = false;
-    step7Results.hidden = true;
-    scrollToWizardTop();
+    showStep7Screen(step7Review);
   }
 
   function showTrialResults() {
     renderResults();
-    step7Input.hidden = true;
-    step7Review.hidden = true;
-    step7Results.hidden = false;
-    scrollToWizardTop();
+    showStep7Screen(step7Results);
+  }
+
+  // Leaves the manual pass behind: a batch ends at the group results, a single
+  // trial at its own results.
+  function finishScoring() {
+    if (batch.count > 1) {
+      renderGroupResults();
+      goToTab("results");
+    } else {
+      showTrialResults();
+    }
   }
 
   if (btnCalculate) {
@@ -266,17 +287,36 @@
       batch.count = state.trialMode === "multiple" ? Math.min(state.trialCount, syntheticTrialCount()) : 1;
       batch.current = 0;
       batch.scored = [];
-      showScoringScreen();
+      showReadyScreen();
+    });
+  }
+
+  const btnReadyBack = document.getElementById("btn-ready-back");
+  if (btnReadyBack) {
+    btnReadyBack.addEventListener("click", () => showStep7Screen(step7Input));
+  }
+
+  const btnReadyContinue = document.getElementById("btn-ready-continue");
+  if (btnReadyContinue) {
+    btnReadyContinue.addEventListener("click", () => {
+      batch.current = 0;
+      if (needsManualPass(state.taskType || "pvf")) {
+        showScoringScreen();
+      } else {
+        // Nothing to mark by hand: every trial is complete as it stands.
+        for (let i = 0; i < batch.count; i++) batch.scored[i] = [];
+        batch.current = batch.count - 1;
+        finishScoring();
+      }
     });
   }
 
   if (btnReviewBack) {
     btnReviewBack.addEventListener("click", () => {
-      // From the first trial, back means the import step; otherwise it means
-      // the previous trial, so a rater can revise what they scored.
+      // From the first trial, back means the automated analysis; otherwise it
+      // means the previous trial, so a rater can revise what they scored.
       if (batch.current === 0) {
-        step7Review.hidden = true;
-        step7Input.hidden = false;
+        showReadyScreen();
       } else {
         batch.current -= 1;
         showScoringScreen();
@@ -291,14 +331,18 @@
       if (batch.count > 1) {
         advanceTrial();
       } else {
-        showTrialResults();
+        finishScoring();
       }
     });
   }
 
-  // "Back to scoring" — revise the trial currently on screen.
+  // Back from a single trial's results: to its scoring, or to the automated
+  // analysis when there was nothing to score by hand.
   if (btnEditInputs) {
-    btnEditInputs.addEventListener("click", showScoringScreen);
+    btnEditInputs.addEventListener("click", () => {
+      if (needsManualPass(state.taskType || "pvf")) showScoringScreen();
+      else showReadyScreen();
+    });
   }
 
   function advanceTrial() {
@@ -306,8 +350,7 @@
       batch.current += 1;
       showScoringScreen();
     } else {
-      renderGroupResults();
-      goToTab("results");
+      finishScoring();
     }
   }
 
@@ -315,6 +358,62 @@
     const el = document.getElementById(id);
     if (el) el.addEventListener("click", advanceTrial);
   });
+
+  // --- Automated analysis ready ----------------------------------------------
+  function readyTrials() {
+    const out = [];
+    for (let i = 0; i < batch.count; i++) {
+      out.push(usingSyntheticBatch() ? syntheticTrial(i) : activeTrial());
+    }
+    return out;
+  }
+
+  function renderReadyScreen() {
+    const type = state.taskType || "pvf";
+    const trials = readyTrials();
+    const phonemic = !semanticIsCongruent(type);
+    const disc = discrepantState(type);
+    const languageName = (state.dataLanguage || "fi") === "fi" ? "Finnish" : "English";
+
+    document.getElementById("ready-summary").textContent =
+      trials.length + (trials.length === 1 ? " trial" : " trials") + " · " + trials[0].trialLabel + " · " + languageName;
+
+    // List the automated measures, with unavailable and omitted ones marked.
+    const values = (VFT_DATA.scoredValues && VFT_DATA.scoredValues[type]) || [];
+    const hasAudio = state.mediaType === "voice";
+    const auto = [];
+    values.forEach((v) => {
+      if (v.key === "temporal" && !hasAudio) {
+        auto.push({ v: v, note: "Requires audio. Excluded from this prototype." });
+      } else if (v.key === "discrepant" || v.key === "discrepantSize") {
+        if (disc === "english") auto.push({ v: v, note: "Excluded from this prototype for English" });
+        else if (disc === "omitted") auto.push({ v: v, note: "Left out in step 5" });
+        else if (!phonemic) auto.push({ v: v });
+      } else if ((v.key === "count" || v.key === "clusterSize" || v.key === "switches") && !phonemic) {
+        // Scored by hand in the next step.
+      } else {
+        auto.push({ v: v });
+      }
+    });
+
+    const item = (entry) => `
+      <li class="value-item${entry.note ? " is-unavailable" : ""}">
+        <span class="value-item-icon">${entry.note ? "–" : "✓"}</span>
+        <span class="value-item-body">
+          <span class="value-item-label">${entry.v.label}</span>
+          <span class="value-item-desc">${entry.v.desc}</span>
+          ${entry.note ? '<span class="value-item-note">' + entry.note + "</span>" : ""}
+        </span>
+      </li>`;
+    document.getElementById("ready-auto-list").innerHTML = auto.map(item).join("");
+    // Only announce a manual step when there is one.
+    document.getElementById("ready-next").hidden = !needsManualPass(type);
+    document.getElementById("ready-continue-label").textContent = needsManualPass(type)
+      ? "Start manual scoring"
+      : trials.length > 1
+        ? "View group results"
+        : "View results";
+  }
 
   // --- Step 8: manual semantic clustering -----------------------------------
   // Semantic clustering is scored by the rater, not by the tool. The rater
@@ -679,6 +778,23 @@
     return discrepantIsPhonemic(type) && (state.dataLanguage || "fi") !== "fi";
   }
 
+  // Whether the task-discrepant reading is scored in this run. Left out by
+  // choice is not the same as zero clusters: an omitted reading has no value.
+  function discrepantIncluded(type) {
+    return state.includeDiscrepant === "yes" && !phonemicDiscrepantUnavailable(type);
+  }
+
+  function discrepantState(type) {
+    if (phonemicDiscrepantUnavailable(type)) return "english";
+    return discrepantIncluded(type) ? "shown" : "omitted";
+  }
+
+  // The semantic reading of a semantic trial is always scored by hand; a
+  // phonemic trial needs a manual pass only for its task-discrepant reading.
+  function needsManualPass(type) {
+    return semanticIsCongruent(type) || discrepantIncluded(type);
+  }
+
   // Three or more consecutive words sharing an initial phoneme form a cluster
   // (the manual's special rule for semantic fluency); exactly two consecutive
   // words cluster when they share the same opening.
@@ -731,7 +847,7 @@
       errors: src.errorIndices.map((idx) => ({
         word: src.words[idx],
         type: "Non-sequential repetition",
-        note: "Excluded from the total score; included in its cluster.",
+        note: "Excluded from the total score; can be counted in a cluster.",
       })),
       totalScore: src.totalScore,
       // The semantic (task-congruent) reading comes from the rater, so there
@@ -789,7 +905,7 @@
       errors: src.errorIndices.map((idx) => ({
         word: src.words[idx],
         type: "Non-sequential repetition",
-        note: "Excluded from the total score; included in its cluster.",
+        note: "Excluded from the total score; can be counted in a cluster.",
       })),
       totalScore: src.totalScore,
       // In a semantic trial the task-congruent reading comes from the rater,
@@ -869,20 +985,24 @@
         congruent = manual;
         // The discrepant reading here is phonemic and rule-based.
         discrepant =
-          !phonemicDiscrepantUnavailable(type) && r.taskDiscrepant
-            ? resolveClusterReading(r.taskDiscrepant, resolutions)
-            : null;
+          discrepantIncluded(type) && r.taskDiscrepant ? resolveClusterReading(r.taskDiscrepant, resolutions) : null;
       } else {
         congruent = resolveClusterReading(r, resolutions);
-        discrepant = manual;
+        discrepant = discrepantIncluded(type) ? manual : null;
       }
     } else {
       congruent = resolveClusterReading(r, resolutions);
       discrepant =
-        !phonemicDiscrepantUnavailable(type) && r.taskDiscrepant ? resolveClusterReading(r.taskDiscrepant, resolutions) : null;
+        discrepantIncluded(type) && r.taskDiscrepant ? resolveClusterReading(r.taskDiscrepant, resolutions) : null;
     }
 
-    return { ...r, ...congruent, taskDiscrepant: discrepant, semanticIsCongruent: semanticIsCongruent(type) };
+    return {
+      ...r,
+      ...congruent,
+      taskDiscrepant: discrepant,
+      discrepantState: discrepantState(type),
+      semanticIsCongruent: semanticIsCongruent(type),
+    };
   }
 
   // Cluster-row rendering, shared by the per-trial results block and the
@@ -926,6 +1046,11 @@
 
   const MANUAL_SCORED_NOTE = "Scored manually.";
 
+  // Number of clusters in a reading, counted from its rows.
+  function clusterCount(reading) {
+    return reading.rows.filter((row) => row.kind !== "single").length;
+  }
+
   // Renders one trial's results into a set of target elements. Group-level
   // aggregation is a separate view, so this is always a single trial.
   function renderResultsInto(els, opts) {
@@ -940,15 +1065,24 @@
       { value: r.totalScore, label: "Total score" },
       { value: r.errors.length, label: "Errors" },
       { value: hasAudio ? "—" : "N/A", label: "Temporal parameters", unavailable: !hasAudio },
+      { value: clusterCount(r), label: type === "pvf" ? "Number of phonemic clusters" : "Number of semantic clusters" },
       // Always one decimal, so it reads the same here as on the scoring screen.
       { value: Number(r.meanClusterSize).toFixed(1), label: type === "pvf" ? "Mean phonemic cluster size" : "Mean semantic cluster size" },
       { value: r.switches, label: "Number of switches" },
-      {
+    ];
+    // Omitted by choice: no tile at all. Excluded for English: shown as N/A.
+    if (r.discrepantState !== "omitted") {
+      stats.push({
         value: r.taskDiscrepant ? r.taskDiscrepant.count : "N/A",
         label: "Task-discrepant clusters",
         unavailable: !r.taskDiscrepant,
-      },
-    ];
+      });
+      stats.push({
+        value: r.taskDiscrepant ? Number(r.taskDiscrepant.meanClusterSize).toFixed(1) : "N/A",
+        label: "Mean task-discrepant cluster size",
+        unavailable: !r.taskDiscrepant,
+      });
+    }
     els.statGrid.innerHTML = stats
       .map(
         (s) => `
@@ -961,6 +1095,9 @@
       .join("");
 
     els.clusterBody.innerHTML = renderClusterRows(r.rows);
+    if (els.discrepantSection) {
+      els.discrepantSection.hidden = r.discrepantState === "omitted";
+    }
     if (els.discrepantBody) {
       els.discrepantBody.innerHTML = r.taskDiscrepant ? renderClusterRows(r.taskDiscrepant.rows) : "";
     }
@@ -1000,6 +1137,7 @@
     discrepantBody: document.getElementById("discrepant-table-body"),
     discrepantWrap: document.getElementById("discrepant-table-wrap"),
     discrepantHelp: document.getElementById("discrepant-help"),
+    discrepantSection: document.getElementById("discrepant-section"),
     errorList: document.getElementById("error-list"),
     errorsHeading: document.getElementById("errors-heading"),
     clusterManualNote: document.getElementById("cluster-manual-note"),
@@ -1091,9 +1229,11 @@
       "prompt",
       "total_score",
       "errors_count",
+      "number_of_clusters",
       "mean_cluster_size",
       "number_of_switches",
       "task_discrepant_cluster_count",
+      "task_discrepant_mean_cluster_size",
       "reading",
       "cluster_index",
       "cluster_words",
@@ -1117,9 +1257,11 @@
             csvEscape(promptText()),
             r.totalScore,
             r.errors.length,
+            clusterCount(r),
             Number(r.meanClusterSize).toFixed(1),
             r.switches,
             r.taskDiscrepant ? r.taskDiscrepant.count : "",
+            r.taskDiscrepant ? Number(r.taskDiscrepant.meanClusterSize).toFixed(1) : "",
             reading,
             i + 1,
             csvEscape(wordsText),
@@ -1163,6 +1305,7 @@
         prompt: promptText(),
         total_score: r.totalScore,
         errors: r.errors,
+        number_of_clusters: clusterCount(r),
         mean_cluster_size: Number(Number(r.meanClusterSize).toFixed(1)),
         number_of_switches: r.switches,
         // In true production order (matches the results table on screen).
@@ -1170,7 +1313,7 @@
         task_discrepant: r.taskDiscrepant
           ? {
               count: r.taskDiscrepant.count,
-              mean_cluster_size: r.taskDiscrepant.meanClusterSize,
+              mean_cluster_size: Number(Number(r.taskDiscrepant.meanClusterSize).toFixed(1)),
               sequence: toSequence(r.taskDiscrepant.rows),
             }
           : null,
@@ -1229,7 +1372,7 @@
     });
     if (n === 2) updateTaskTypeAvailability();
     if (n === 3) updatePromptExampleUI();
-    if (n === 5) renderValueChecklist();
+    if (n === 5) renderDiscrepantChoice();
     if (n === 6) updateTrialModeAvailability();
     if (n === 7) updateStep7InputCopy();
   }
@@ -1315,35 +1458,30 @@
   }
 
   // --- Step 5: render the scored-values checklist based on PVF/SVF choice --
-  function renderValueChecklist() {
-    const list = document.getElementById("value-checklist");
-    if (!list) return;
+  // Step 5: whether to score task-discrepant clustering. What that costs
+  // depends on the task: in a semantic trial the reading is phonemic and
+  // automated; in a phonemic trial it is semantic and scored by hand.
+  function renderDiscrepantChoice() {
+    const grid = document.querySelector('.choice-grid[data-field="includeDiscrepant"]');
+    if (!grid) return;
     const type = state.taskType || "pvf";
-    const values = (VFT_DATA.scoredValues && VFT_DATA.scoredValues[type]) || [];
-    const hasAudio = state.mediaType === "voice";
+    const include = grid.querySelector('.choice-card[data-value="yes"]');
+    const leaveOut = grid.querySelector('.choice-card[data-value="no"]');
+    const sub = document.getElementById("discrepant-include-sub");
+    const english = phonemicDiscrepantUnavailable(type);
 
-    list.innerHTML = values
-      .map((v) => {
-        const notYetBuilt = v.notYetBuilt && (state.dataLanguage || "fi") !== "fi";
-        const unavailable = (v.requiresAudio && !hasAudio) || notYetBuilt;
-        return `
-          <li class="value-item${unavailable ? " is-unavailable" : ""}">
-            <span class="value-item-icon">${unavailable ? "–" : "✓"}</span>
-            <span class="value-item-body">
-              <span class="value-item-label">${v.label}</span>
-              <span class="value-item-desc">${v.desc}</span>
-              ${
-                notYetBuilt
-                  ? '<span class="value-item-note">Excluded from this prototype for English</span>'
-                  : unavailable
-                  ? '<span class="value-item-note">Requires audio. Excluded from this prototype.</span>'
-                  : ""
-              }
-            </span>
-          </li>
-        `;
-      })
-      .join("");
+    if (sub) sub.hidden = english;
+    setCardAvailable(include, !english, "discrepant-note");
+
+    if (english) {
+      state.includeDiscrepant = "no";
+      leaveOut.classList.add("is-selected");
+    } else if (state.includeDiscrepant) {
+      grid.querySelectorAll(".choice-card").forEach((c) => {
+        c.classList.toggle("is-selected", c.dataset.value === state.includeDiscrepant);
+      });
+    }
+    updateStepValidity(grid.closest(".step"));
   }
 
   // --- Data provenance ------------------------------------------------------
@@ -1437,15 +1575,17 @@
         ? "All " + batch.count + " trial" + (batch.count === 1 ? "" : "s") + " scored."
         : trials.length + " of " + batch.count + " trials scored. Results are incomplete.";
 
-    const showDiscrepant = !phonemicDiscrepantUnavailable(type);
+    const showDiscrepant = discrepantIncluded(type);
     const metrics = [
       { label: "Total score", dp: 1, get: (r) => r.totalScore },
       { label: "Errors", dp: 1, get: (r) => r.errors.length },
+      { label: type === "pvf" ? "Number of phonemic clusters" : "Number of semantic clusters", dp: 1, get: (r) => clusterCount(r) },
       { label: type === "pvf" ? "Mean phonemic cluster size" : "Mean semantic cluster size", dp: 2, get: (r) => r.meanClusterSize },
       { label: "Number of switches", dp: 1, get: (r) => r.switches },
     ];
     if (showDiscrepant) {
       metrics.push({ label: "Task-discrepant clusters", dp: 1, get: (r) => (r.taskDiscrepant ? r.taskDiscrepant.count : 0) });
+      metrics.push({ label: "Mean task-discrepant cluster size", dp: 2, get: (r) => (r.taskDiscrepant ? r.taskDiscrepant.meanClusterSize : 0) });
     }
 
     groupStatGridEl.innerHTML = metrics
@@ -1464,8 +1604,9 @@
       })
       .join("");
 
-    const discrepantHeader = document.getElementById("group-discrepant-header");
-    if (discrepantHeader) discrepantHeader.hidden = !showDiscrepant;
+    document.querySelectorAll(".group-discrepant-header").forEach((th) => {
+      th.hidden = !showDiscrepant;
+    });
 
     groupTrialBodyEl.innerHTML = trials
       .map((t) => {
@@ -1475,12 +1616,18 @@
             <td><span class="group-trial-name">Trial ${t.index + 1}</span></td>
             <td>${r.totalScore}</td>
             <td>${r.errors.length}</td>
+            <td>${clusterCount(r)}</td>
             <td>${fmt(r.meanClusterSize)}</td>
             <td>${r.switches}</td>
-            ${showDiscrepant ? "<td>" + (r.taskDiscrepant ? r.taskDiscrepant.count : "—") + "</td>" : ""}
+            ${
+              showDiscrepant
+                ? "<td>" + (r.taskDiscrepant ? r.taskDiscrepant.count : "—") + "</td>" +
+                  "<td>" + (r.taskDiscrepant ? fmt(r.taskDiscrepant.meanClusterSize) : "—") + "</td>"
+                : ""
+            }
           </tr>
           <tr class="group-detail-row" data-detail="${t.index}" hidden>
-            <td colspan="${showDiscrepant ? 6 : 5}">
+            <td colspan="${showDiscrepant ? 8 : 6}">
               <h4 class="group-detail-heading">Task-congruent clusters</h4>
               ${r.semanticIsCongruent ? '<p class="manual-scored-note">' + MANUAL_SCORED_NOTE + "</p>" : ""}
               <div class="cluster-table-wrap">

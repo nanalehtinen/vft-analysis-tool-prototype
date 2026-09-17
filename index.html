@@ -187,22 +187,30 @@
         </div>
       </div>
 
-      <!-- Step 5: confirm scored values -->
-      <div class="step" data-step="5">
+      <!-- Step 5: task-discrepant clustering -->
+      <div class="step" data-step="5" data-requires="includeDiscrepant">
         <div class="step-card">
-          <h2 data-i18n="step5.title">Scored measures</h2>
-          <p class="step-help" data-i18n="step5.help">
-            Measures scored for the selected task type. Definitions are in the <a href="#" class="inline-link" data-goto-tab="rules" data-i18n="step5.rulesLink">Scoring Rules</a> tab.
-          </p>
+          <h2 data-i18n="step5.title">Include task-discrepant clustering?</h2>
+          <p class="step-help" data-i18n="step5.help">Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial.</p>
 
-          <ul class="value-checklist" id="value-checklist"></ul>
+          <div class="choice-grid" data-field="includeDiscrepant">
+            <button type="button" class="choice-card" data-value="yes">
+              <span class="choice-title">Include</span>
+              <span class="choice-sub" id="discrepant-include-sub">Phonemic clusters for semantic trials are calculated automatically. Semantic clusters for phonemic trials are scored manually for each trial.</span>
+              <span class="choice-sub discrepant-note" hidden>Excluded from this prototype for English</span>
+            </button>
+            <button type="button" class="choice-card" data-value="no">
+              <span class="choice-title">Leave out</span>
+              <span class="choice-sub">Not scored or reported.</span>
+            </button>
+          </div>
         </div>
 
         <div class="step-actions">
           <button type="button" class="btn btn-secondary" data-back="4">← <span data-i18n="action.back">Back</span></button>
           <span class="step-count">Step 5 of 7</span>
-          <button type="button" class="btn btn-primary" data-next="6">
-            <span data-i18n="step5.confirm">Next</span> →
+          <button type="button" class="btn btn-primary" data-next="6" disabled>
+            <span data-i18n="action.next">Next</span> →
           </button>
         </div>
       </div>
@@ -268,7 +276,28 @@
             <button type="button" class="btn btn-secondary" data-back="6">← <span data-i18n="action.back">Back</span></button>
             <span class="step-count">Step 7 of 7</span>
             <button type="button" class="btn btn-primary" id="btn-calculate" disabled>
-              <span data-i18n="step7.calculate">Start scoring</span> →
+              <span data-i18n="step7.calculate">Run automated analysis</span> →
+            </button>
+          </div>
+        </div>
+
+        <!-- Automated analysis ready -->
+        <div id="step7-ready" hidden>
+          <div class="step-card">
+            <h2>Automated analysis ready</h2>
+            <p class="step-help" id="ready-summary"></p>
+
+            <h3 class="results-subheading">Scored automatically</h3>
+            <ul class="value-checklist" id="ready-auto-list"></ul>
+
+            <p class="ready-next" id="ready-next">Next step: manual scoring for semantic clusters</p>
+          </div>
+
+          <div class="step-actions">
+            <button type="button" class="btn btn-secondary" id="btn-ready-back">← <span>Back</span></button>
+            <span class="step-count">Step 7 of 7</span>
+            <button type="button" class="btn btn-primary" id="btn-ready-continue">
+              <span id="ready-continue-label">Start manual scoring</span> →
             </button>
           </div>
         </div>
@@ -343,10 +372,10 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr><td>0–15 s</td><td>—</td></tr>
-                  <tr><td>15–30 s</td><td>—</td></tr>
-                  <tr><td>30–45 s</td><td>—</td></tr>
-                  <tr><td>45–60 s</td><td>—</td></tr>
+                  <tr><td>1–15 s</td><td>—</td></tr>
+                  <tr><td>16–30 s</td><td>—</td></tr>
+                  <tr><td>31–45 s</td><td>—</td></tr>
+                  <tr><td>46–60 s</td><td>—</td></tr>
                 </tbody>
               </table>
             </div>
@@ -367,6 +396,7 @@
               </table>
             </div>
 
+            <div id="discrepant-section">
             <h3 class="results-subheading" id="discrepant-heading">Task-discrepant clusters</h3>
             <p class="step-help discrepant-help" id="discrepant-help">Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial.</p>
             <p class="manual-scored-note" id="discrepant-manual-note" hidden></p>
@@ -381,6 +411,7 @@
                 </thead>
                 <tbody id="discrepant-table-body"></tbody>
               </table>
+            </div>
             </div>
 
             <p class="download-note" id="trial-results-note"></p>
@@ -429,9 +460,11 @@
                   <th>Trial</th>
                   <th>Total score</th>
                   <th>Errors</th>
+                  <th>Clusters</th>
                   <th>Mean cluster size</th>
                   <th>Switches</th>
-                  <th id="group-discrepant-header">Task-discrepant</th>
+                  <th class="group-discrepant-header">Task-discrepant clusters</th>
+                  <th class="group-discrepant-header">Task-discrepant mean size</th>
                 </tr>
               </thead>
               <tbody id="group-trial-body"></tbody>
@@ -474,11 +507,12 @@
           <li><span class="guidance-step-num">2</span><div><strong>Task type</strong><span>Determines the clustering and switching rules applied.</span></div></li>
           <li><span class="guidance-step-num">3</span><div><strong>Task prompt</strong><span>The instruction given to the participant, stored with the results.</span></div></li>
           <li><span class="guidance-step-num">4</span><div><strong>Data format</strong><span>Transcripts or voice recordings. Voice recordings are excluded from this prototype.</span></div></li>
-          <li><span class="guidance-step-num">5</span><div><strong>Scored measures</strong><span>The measures scored for the selected task type.</span></div></li>
+          <li><span class="guidance-step-num">5</span><div><strong>Task-discrepant clustering</strong><span>Include or leave out clusters in the other domain. Scored automatically in semantic trials and manually in phonemic trials.</span></div></li>
           <li><span class="guidance-step-num">6</span><div><strong>Number of trials</strong><span>A single trial, or a batch of trials from one participant group answering the same prompt.</span></div></li>
           <li><span class="guidance-step-num">7</span><div><strong>Import data</strong><span>Import transcripts or voice files. Demonstration data can be loaded for easy access.</span></div></li>
-          <li><span class="guidance-step-num">8</span><div><strong>Clustering</strong><span>Phonemic clustering is automatically scored by rule. The researcher marks semantic clusters by dragging across adjacent words for each trial.</span></div></li>
-          <li><span class="guidance-step-num">9</span><div><strong>Group results</strong><span>Mean, SD, range and n for each measure, with cluster tables for each trial. Results can be downloaded as CSV or JSON for analysis in R, SPSS or Python. Download is disabled for this prototype.</span></div></li>
+          <li><span class="guidance-step-num">8</span><div><strong>Automated analysis</strong><span>Automated results for all trials, and the measures that still need manual scoring.</span></div></li>
+          <li><span class="guidance-step-num">9</span><div><strong>Clustering</strong><span>Phonemic clustering is automatically scored by rule. The researcher marks semantic clusters by dragging across adjacent words for each trial.</span></div></li>
+          <li><span class="guidance-step-num">10</span><div><strong>Group results</strong><span>Mean, SD, range and n for each measure, with cluster tables for each trial. Results can be downloaded as CSV or JSON for analysis in R, SPSS or Python. Download is disabled for this prototype.</span></div></li>
         </ol>
       </div>
 
@@ -486,13 +520,13 @@
         <h3 class="results-subheading guidance-first-heading">Reading your results</h3>
         <ul class="guidance-defs">
           <li><strong>Total score.</strong> Number of words produced, excluding errors.</li>
-          <li><strong>Errors.</strong> Repetitions, categorical errors, paraphasias and nonwords, each with its error type.</li>
+          <li><strong>Errors.</strong> Repetitions, categorical errors, paraphasias and nonwords, and language intrusions for multilingual populations, each with its error type.</li>
           <li><strong>Temporal parameters.</strong> Words produced per 15-second segment. Requires audio. Excluded from this prototype.</li>
         </ul>
         <p class="guidance-p">Clustering is scored in two independent readings:</p>
         <ul class="guidance-list">
           <li><strong>Task-congruent clustering.</strong> Clusters in the same domain as the task. Mean cluster size and number of switches are based on this reading.</li>
-          <li><strong>Task-discrepant clustering.</strong> Clusters in the other domain, e.g. semantic clusters in a phonemic trial. Reported as a separate count.</li>
+          <li><strong>Task-discrepant clustering.</strong> Optional. Clusters in the other domain, e.g. semantic clusters in a phonemic trial. Reported as a separate count.</li>
         </ul>
         <ul class="guidance-defs">
           <li><strong>Cluster tables.</strong> Every word in order of production, including non-clustering single words.</li>
