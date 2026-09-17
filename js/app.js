@@ -450,7 +450,6 @@
   // Turns the rater's ranges into the same shape the results renderer expects
   // from a rule-based reading, deriving the metrics from the runs.
   function buildManualReading(trial, ranges) {
-    const errorIdx = trial.errorIndices || [];
     const covered = new Set();
 
     const clusters = ranges
@@ -458,16 +457,13 @@
       .sort((a, b) => a.s - b.s)
       .map((rg) => {
         const words = [];
-        const errorFlags = [];
         for (let i = rg.s; i <= rg.e; i++) {
           covered.add(i);
           words.push(trial.words[i]);
-          errorFlags.push(errorIdx.indexOf(i) !== -1);
         }
         return {
           pos: rg.s,
           words,
-          errorFlags,
           rule: "Semantic cluster (manual)",
         };
       });
@@ -706,14 +702,6 @@
     });
   }
 
-  // Manually scored clusters carry `errorFlags` aligned to `words`, which is
-  // exact even when the same word occurs twice in one cluster. Clusters from
-  // the manual's sample protocols match by word.
-  function isErrorWord(row, word, wordIndex) {
-    if (row.errorFlags) return !!row.errorFlags[wordIndex];
-    return !!(row.errorWords && row.errorWords.indexOf(word) !== -1);
-  }
-
   // --- Which trial is being scored, and where its data comes from ----------
   // Separate sources, never mixed:
   //   single trial -> VFT_DATA.results, the manual's published sample
@@ -769,8 +757,7 @@
   // Three or more consecutive words sharing an initial phoneme form a cluster
   // (the manual's special rule for semantic fluency); exactly two consecutive
   // words cluster when they share the same opening.
-  function buildPhonemicReading(words, errorIndices) {
-    const errorIdx = errorIndices || [];
+  function buildPhonemicReading(words) {
     const clusters = [];
     const nonClustering = [];
     let i = 0;
@@ -787,7 +774,6 @@
         clusters.push({
           pos: i,
           words: slice,
-          errorFlags: slice.map((w, k) => errorIdx.indexOf(i + k) !== -1),
           rule:
             len >= 3
               ? "1.1 Word-initial phoneme (three or more words, semantic task)"
@@ -882,7 +868,7 @@
       // In a phonemic trial the task-discrepant reading is semantic and comes
       // from the rater.
       taskDiscrepant:
-        phonemic || phonemicDiscrepantUnavailable() ? null : buildPhonemicReading(src.words, src.errorIndices),
+        phonemic || phonemicDiscrepantUnavailable() ? null : buildPhonemicReading(src.words),
     };
     return phonemic ? Object.assign(base, phonemicReadingFromRanges(src.words, src.phonemicRanges)) : base;
   }
@@ -941,19 +927,23 @@
   // Cluster-row rendering, shared by the per-trial results block and the
   // per-trial detail rows in the group view.
 
-  function renderClusterRows(rows) {
+  // Errors are marked by their position in the word list, so a repeated word
+  // is marked only where it was the error.
+  function renderClusterRows(rows, errorIndices) {
+    const errorIdx = errorIndices || [];
+    const mark = (word, pos) => (errorIdx.indexOf(pos) !== -1 ? word + " (error)" : word);
     return rows
       .map((row) => {
         if (row.kind === "single") {
           return `
             <tr class="cluster-row-single">
-              <td class="cluster-words">${row.word}</td>
+              <td class="cluster-words">${mark(row.word, row.pos)}</td>
               <td><span class="cluster-size-badge is-single">—</span></td>
               <td>Non-clustering single word</td>
             </tr>
           `;
         }
-        const wordList = row.words.map((w, wi) => (isErrorWord(row, w, wi) ? w + " (error)" : w)).join(", ");
+        const wordList = row.words.map((w, wi) => mark(w, row.pos + wi)).join(", ");
         return `
           <tr>
             <td class="cluster-words">${wordList}</td>
@@ -1204,9 +1194,6 @@
     renderProvenance(document.getElementById("provenance-group"), trials[0].result.synthetic ? "synthetic" : null);
     document.getElementById("results-title").textContent = single ? "Results" : "Group results";
     document.getElementById("trial-table-heading").textContent = single ? "Trial results" : "Per-trial results";
-    document.getElementById("trial-table-help").textContent = single
-      ? "Select the trial to hide or show its cluster tables."
-      : "Select a trial to view its cluster tables.";
     groupBadgeEl.textContent = trials[0].result.trialLabel;
     groupProgressEl.hidden = single;
     groupProgressEl.textContent =
@@ -1271,12 +1258,20 @@
           </tr>
           <tr class="group-detail-row" data-detail="${t.index}"${single ? "" : " hidden"}>
             <td colspan="${showDiscrepant ? 8 : 6}">
+              <h4 class="group-detail-heading">Errors</h4>
+              ${
+                r.errors.length
+                  ? '<ul class="error-list">' +
+                    r.errors.map((e) => "<li><strong>" + e.word + "</strong> — " + e.type + ". " + e.note + "</li>").join("") +
+                    "</ul>"
+                  : '<p class="error-none">No errors.</p>'
+              }
               <h4 class="group-detail-heading">Task-congruent clusters</h4>
               ${r.semanticIsCongruent ? '<p class="manual-scored-note">' + MANUAL_SCORED_NOTE + "</p>" : ""}
               <div class="cluster-table-wrap">
                 <table class="cluster-table">
                   <thead><tr><th>Words</th><th>Size</th><th>Rule applied</th></tr></thead>
-                  <tbody>${renderClusterRows(r.rows)}</tbody>
+                  <tbody>${renderClusterRows(r.rows, r.errorIndices)}</tbody>
                 </table>
               </div>
               ${
@@ -1285,7 +1280,7 @@
                     (r.semanticIsCongruent ? "" : '<p class="manual-scored-note">' + MANUAL_SCORED_NOTE + "</p>") +
                     '<div class="cluster-table-wrap"><table class="cluster-table">' +
                     "<thead><tr><th>Words</th><th>Size</th><th>Rule applied</th></tr></thead>" +
-                    "<tbody>" + (r.taskDiscrepant ? renderClusterRows(r.taskDiscrepant.rows) : "") + "</tbody>" +
+                    "<tbody>" + (r.taskDiscrepant ? renderClusterRows(r.taskDiscrepant.rows, r.errorIndices) : "") + "</tbody>" +
                     "</table></div>"
                   : ""
               }

@@ -793,7 +793,7 @@ button { font-family: inherit; }
 .group-trial-row { cursor: pointer; }
 .group-trial-row:hover { background: var(--surface-muted); }
 
-.group-trial-name { font-weight: 700; }
+.group-trial-name { font-weight: 700; white-space: nowrap; }
 
 /* Disclosure caret on each trial row. */
 .group-trial-name::before {
@@ -821,8 +821,30 @@ button { font-family: inherit; }
   font-weight: 700;
 }
 
-.group-detail-row .cluster-table-wrap + .group-detail-heading {
+.group-detail-row .cluster-table-wrap + .group-detail-heading,
+.group-detail-row .error-list + .group-detail-heading,
+.group-detail-row .error-none + .group-detail-heading {
   margin-top: 22px;
+}
+
+.error-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.error-list li,
+.error-none {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.error-list li strong {
+  color: var(--text);
 }
 
 /* Trial position while scoring a batch. */

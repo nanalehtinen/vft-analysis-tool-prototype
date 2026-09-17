@@ -176,7 +176,7 @@ const VFT_DATA = {
       // lay the results table out in true production order.
       clusters: [
         { pos: 1, words: ["komea", "koiras"], rule: "1.1 Word-initial phonemes (shared kV-)" },
-        { pos: 8, words: ["komea", "korea"], rule: "1.1 + 1.3 Word-initial & first/last phonemes (non-sequential repetition)", errorWords: ["komea"] },
+        { pos: 8, words: ["komea", "korea"], rule: "1.1 + 1.3 Word-initial & first/last phonemes (non-sequential repetition)" },
         { pos: 10, words: ["kauhea", "kamala", "karu", "karkki", "karhea", "kauha"], rule: "1.1 Word-initial phonemes (shared ka-)" },
         { pos: 16, words: ["kippo", "kuppi"], rule: "1.4 Consonant structure" },
       ],
@@ -202,7 +202,7 @@ const VFT_DATA = {
         meanClusterSize: 2.6,
         clusters: [
           { pos: 5, words: ["kynä", "kumi"], rule: "2.2 Weak cluster — relates to writing" },
-          { pos: 7, words: ["kaunis", "komea", "korea"], rule: "2.4 Adjectives sharing semantic properties — relates to looks", errorWords: ["komea"] },
+          { pos: 7, words: ["kaunis", "komea", "korea"], rule: "2.4 Adjectives sharing semantic properties — relates to looks" },
           { pos: 10, words: ["kauhea", "kamala", "karu"], rule: "2.1 Strong cluster — carry similar connotations" },
           { pos: 15, words: ["kauha", "kippo", "kuppi"], rule: "2.1 Strong cluster — items in the kitchen" },
           { pos: 18, words: ["kurki", "kirjosieppo"], rule: "2.2 Weak cluster — birds" },
@@ -236,7 +236,7 @@ const VFT_DATA = {
         { pos: 0, words: ["koira", "kissa"], rule: "2.2 Weak cluster — pets" },
         { pos: 3, words: ["hämähäkki", "kärpänen"], rule: "2.2 Weak cluster — insects" },
         { pos: 5, words: ["käärme", "ankerias"], rule: "2.2 Weak cluster — visual: long, slithering animal" },
-        { pos: 7, words: ["hevonen", "lehmä", "vasikka", "sika", "kana"], rule: "2.1 Strong cluster — farm animals", errorWords: ["hevonen"] },
+        { pos: 7, words: ["hevonen", "lehmä", "vasikka", "sika", "kana"], rule: "2.1 Strong cluster — farm animals" },
         { pos: 13, words: ["kuikka", "pelikaani", "joutsen"], rule: "2.1 Strong cluster — aquatic birds" },
         { pos: 17, words: ["hamsteri", "rotta", "hiiri", "orava"], rule: "2.1 Strong cluster — rodents" },
       ],
