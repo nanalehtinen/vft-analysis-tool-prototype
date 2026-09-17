@@ -341,85 +341,12 @@
           </div>
         </div>
 
-        <!-- Results state -->
-        <div id="step7-results" hidden>
-          <div class="step-card">
-            <div class="results-header">
-              <h2>Results</h2>
-              <span class="results-trial-badge" id="results-trial-badge"></span>
-            </div>
-
-            <div class="stat-grid" id="stat-grid"></div>
-
-            <h3 class="results-subheading" id="errors-heading">Errors</h3>
-            <ul class="error-list" id="error-list"></ul>
-
-            <h3 class="results-subheading">Temporal parameters</h3>
-            <p class="step-help discrepant-help">Words produced per 15-second segment. Requires audio. Excluded from this prototype.</p>
-            <div class="cluster-table-wrap is-unavailable-table">
-              <table class="cluster-table">
-                <thead>
-                  <tr>
-                    <th>Segment</th>
-                    <th>Words generated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr><td>1–15 s</td><td>—</td></tr>
-                  <tr><td>16–30 s</td><td>—</td></tr>
-                  <tr><td>31–45 s</td><td>—</td></tr>
-                  <tr><td>46–60 s</td><td>—</td></tr>
-                </tbody>
-              </table>
-            </div>
-
-            <h3 class="results-subheading">Task-congruent clusters</h3>
-            <p class="step-help discrepant-help">Clusters in the same domain as the task — phonemic clusters for the phonemic trial and semantic clusters for the semantic trial.</p>
-            <p class="manual-scored-note" id="cluster-manual-note" hidden></p>
-            <div class="cluster-table-wrap">
-              <table class="cluster-table" id="cluster-table">
-                <thead>
-                  <tr>
-                    <th>Words</th>
-                    <th>Size</th>
-                    <th>Rule applied</th>
-                  </tr>
-                </thead>
-                <tbody id="cluster-table-body"></tbody>
-              </table>
-            </div>
-
-            <div id="discrepant-section">
-            <h3 class="results-subheading" id="discrepant-heading">Task-discrepant clusters</h3>
-            <p class="step-help discrepant-help" id="discrepant-help">Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial.</p>
-            <p class="manual-scored-note" id="discrepant-manual-note" hidden></p>
-            <div class="cluster-table-wrap" id="discrepant-table-wrap">
-              <table class="cluster-table" id="discrepant-table">
-                <thead>
-                  <tr>
-                    <th>Words</th>
-                    <th>Size</th>
-                    <th>Rule applied</th>
-                  </tr>
-                </thead>
-                <tbody id="discrepant-table-body"></tbody>
-              </table>
-            </div>
-            </div>
-          </div>
-
-          <div class="step-actions">
-            <button type="button" class="btn btn-secondary" id="btn-edit-inputs">← <span>Back to scoring</span></button>
-            <span class="step-count">Step 7 of 7</span>
-          </div>
-        </div>
-
       </div>
 
     </div>
   </section>
 
-  <!-- RESULTS (group level) -->
+  <!-- RESULTS (single trial or group) -->
   <section class="panel" id="panel-results" role="tabpanel">
     <div class="guidance-wrap">
 
@@ -431,7 +358,7 @@
       <div id="group-content" hidden>
         <div class="step-card">
           <div class="results-header">
-            <h2>Group results</h2>
+            <h2 id="results-title">Group results</h2>
             <span class="results-trial-badge" id="group-trial-badge"></span>
           </div>
           <div class="provenance" id="provenance-group"></div>
@@ -439,8 +366,8 @@
 
           <div class="group-stat-grid" id="group-stat-grid"></div>
 
-          <h3 class="results-subheading">Per-trial results</h3>
-          <p class="step-help discrepant-help">Select a trial to view its cluster tables.</p>
+          <h3 class="results-subheading" id="trial-table-heading">Per-trial results</h3>
+          <p class="step-help discrepant-help" id="trial-table-help">Select a trial to view its cluster tables.</p>
           <div class="cluster-table-wrap">
             <table class="cluster-table" id="group-trial-table">
               <thead>
@@ -500,7 +427,7 @@
           <li><span class="guidance-step-num">7</span><div><strong>Import data</strong><span>Import transcripts or voice files. Demonstration data can be loaded for easy access.</span></div></li>
           <li><span class="guidance-step-num">8</span><div><strong>Automated analysis</strong><span>Automated results for all trials, and the measures that still need manual scoring.</span></div></li>
           <li><span class="guidance-step-num">9</span><div><strong>Clustering</strong><span>Phonemic clustering is automatically scored by rule. The researcher marks semantic clusters by dragging across adjacent words for each trial.</span></div></li>
-          <li><span class="guidance-step-num">10</span><div><strong>Group results</strong><span>Mean, SD, range and n for each measure, with cluster tables for each trial. Results can be downloaded as CSV or JSON for analysis in R, SPSS or Python. Download is disabled for this prototype.</span></div></li>
+          <li><span class="guidance-step-num">10</span><div><strong>Results</strong><span>Values for mean, SD, range and n for each measure for the group, with cluster tables for each trial. Results can be downloaded as CSV or JSON for analysis in R, SPSS or Python. Download is disabled for this prototype.</span></div></li>
         </ol>
       </div>
 
@@ -513,13 +440,13 @@
         </ul>
         <p class="guidance-p">Clustering is scored in two independent readings:</p>
         <ul class="guidance-list">
-          <li><strong>Task-congruent clustering.</strong> Clusters in the same domain as the task. Mean cluster size and number of switches are based on this reading.</li>
-          <li><strong>Task-discrepant clustering.</strong> Optional. Clusters in the other domain, e.g. semantic clusters in a phonemic trial. Reported as a separate count.</li>
+          <li><strong>Task-congruent clustering.</strong> Clusters in the same domain as the task. Number of clusters, mean cluster size and number of switches are based on this reading.</li>
+          <li><strong>Task-discrepant clustering.</strong> Optional. Clusters in the other domain, e.g. semantic clusters in a phonemic trial. Reported as a separate number of clusters and mean cluster size.</li>
         </ul>
         <ul class="guidance-defs">
           <li><strong>Cluster tables.</strong> Every word in order of production, including non-clustering single words.</li>
         </ul>
-        <p class="guidance-p">Measures are summarized across trials in the <a href="#" class="inline-link" data-goto-tab="results">Results</a> tab. Cluster tables are shown for each trial.</p>
+        <p class="guidance-p">Results are shown in the <a href="#" class="inline-link" data-goto-tab="results">Results</a> tab. For a batch, measures are summarized across trials. Cluster tables are shown for each trial.</p>
       </div>
 
     </div>
