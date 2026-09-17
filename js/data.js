@@ -157,8 +157,7 @@ const VFT_DATA = {
     },
   },
 
-  // Step 7: canned results for the "Load example data" path, reproducing the
-  // manual's own sample protocols (Appendix A).
+  // Single-trial data: the manual's published sample protocols (Appendix A).
   // Cluster breakdowns transcribed directly from the manual's tables; total
   // score, errors, and switches independently derived from the same word
   // sequence and cross-checked against the manual's stated mean cluster size.
@@ -192,20 +191,19 @@ const VFT_DATA = {
         { pos: 18, word: "kurki" },
         { pos: 19, word: "kirjosieppo" },
       ],
-      // No genuinely ambiguous clustering call is documented for this trial
-      // in the manual — the review step still runs, but finds nothing to flag.
-      ambiguousCases: [],
-
       // Task-discrepant clustering: semantic clusters found within this
-      // phonemic trial (a separate reading of the same word list, scored
-      // independently per the manual). Straight from Appendix A's "Task
-      // Discrepant Clustering in Phonemic Category /k/" sample protocol.
+      // phonemic trial, from Appendix A's "Task Discrepant Clustering in
+      // Phonemic Category /k/" sample protocol. Reference only: the tool
+      // never shows it, because the rater scores this reading by hand. The
+      // manual also accepts kauhea, kamala as a 2-word cluster with karu
+      // non-clustering (mean size 2.4); the first reading is stored here.
       taskDiscrepant: {
         count: 5,
         meanClusterSize: 2.6,
         clusters: [
           { pos: 5, words: ["kynä", "kumi"], rule: "2.2 Weak cluster — relates to writing" },
           { pos: 7, words: ["kaunis", "komea", "korea"], rule: "2.4 Adjectives sharing semantic properties — relates to looks", errorWords: ["komea"] },
+          { pos: 10, words: ["kauhea", "kamala", "karu"], rule: "2.1 Strong cluster — carry similar connotations" },
           { pos: 15, words: ["kauha", "kippo", "kuppi"], rule: "2.1 Strong cluster — items in the kitchen" },
           { pos: 18, words: ["kurki", "kirjosieppo"], rule: "2.2 Weak cluster — birds" },
         ],
@@ -218,34 +216,6 @@ const VFT_DATA = {
           { pos: 13, word: "karkki" },
           { pos: 14, word: "karhea" },
         ],
-        // Also from the manual: this cluster has two explicitly acceptable readings.
-        ambiguousCases: [
-          {
-            id: "kauhea-kamala-karu",
-            words: ["kauhea", "kamala", "karu"],
-            pos: 10,
-            analysisLabel: "Task-discrepant (semantic) clustering",
-            options: [
-              {
-                id: "a",
-                label: "3-word cluster — \"similar connotations\"",
-                description: "kauhea, kamala, karu all cluster together as words carrying similar negative connotations.",
-                clusterEntry: { pos: 10, words: ["kauhea", "kamala", "karu"], rule: "2.1 Strong cluster — carry similar connotations" },
-                meanClusterSize: 2.6,
-                count: 5,
-              },
-              {
-                id: "b",
-                label: "2-word cluster (+1 non-clustering)",
-                description: "kauhea, kamala cluster together; karu (bare) doesn't fit that pairing and stays non-clustering.",
-                clusterEntry: { pos: 10, words: ["kauhea", "kamala"], rule: "2.2 Weak cluster — carry similar connotations" },
-                extraNonClustering: [{ pos: 12, word: "karu" }],
-                meanClusterSize: 2.4,
-                count: 5,
-              },
-            ],
-          },
-        ],
       },
     },
     svf: {
@@ -255,17 +225,20 @@ const VFT_DATA = {
       errors: [{ word: "hevonen", type: "Non-sequential repetition", note: "Excluded from the total score; can be counted in a cluster." }],
       // Index in `words` of each error — here the 2nd "hevonen", not the 1st.
       errorIndices: [7],
-      // Defaults (option "a" below) — used until a human resolves the flagged case.
+      // The task-congruent (semantic) reading is reference only: the tool
+      // never shows it, because the rater scores this reading by hand. The
+      // manual also accepts hamsteri, rotta, hiiri as a 3-word "pets" cluster
+      // with orava non-clustering (mean size 2.8, 9 switches); the first
+      // reading is stored here.
       meanClusterSize: 3.0,
       switches: 8,
-      // The 5 unambiguous clusters. The 6th (hamsteri/rotta/hiiri/orava) is
-      // withheld pending human review — see ambiguousCases below.
       clusters: [
         { pos: 0, words: ["koira", "kissa"], rule: "2.2 Weak cluster — pets" },
         { pos: 3, words: ["hämähäkki", "kärpänen"], rule: "2.2 Weak cluster — insects" },
         { pos: 5, words: ["käärme", "ankerias"], rule: "2.2 Weak cluster — visual: long, slithering animal" },
         { pos: 7, words: ["hevonen", "lehmä", "vasikka", "sika", "kana"], rule: "2.1 Strong cluster — farm animals", errorWords: ["hevonen"] },
         { pos: 13, words: ["kuikka", "pelikaani", "joutsen"], rule: "2.1 Strong cluster — aquatic birds" },
+        { pos: 17, words: ["hamsteri", "rotta", "hiiri", "orava"], rule: "2.1 Strong cluster — rodents" },
       ],
       // Words the participant produced that don't belong to any cluster.
       // (This is the 1st "hevonen" — the 2nd is the repetition tagged
@@ -275,41 +248,9 @@ const VFT_DATA = {
         { pos: 12, word: "kirjosieppo" },
         { pos: 16, word: "varpunen" },
       ],
-      // Straight from the manual's own sample protocol (Appendix A): both
-      // readings of this cluster are explicitly listed as acceptable.
-      ambiguousCases: [
-        {
-          id: "rodent-pet",
-          words: ["hamsteri", "rotta", "hiiri", "orava"],
-          // Index of this case's first word in the trial's `words` array —
-          // used to pull real neighbouring words for on-screen context.
-          pos: 17,
-          options: [
-            {
-              id: "a",
-              label: "4-word cluster — \"rodent\"",
-              description: "hamsteri, rotta, hiiri, orava all cluster together under the broader taxonomic category ‘rodent’.",
-              clusterEntry: { pos: 17, words: ["hamsteri", "rotta", "hiiri", "orava"], rule: "2.1 Strong cluster — rodents" },
-              meanClusterSize: 3.0,
-              switches: 8,
-            },
-            {
-              id: "b",
-              label: "3-word cluster — \"pet\" (+1 non-clustering)",
-              description: "hamsteri, rotta, hiiri cluster as ‘pets’; orava (squirrel) doesn't fit that subgroup and stays non-clustering.",
-              clusterEntry: { pos: 17, words: ["hamsteri", "rotta", "hiiri"], rule: "2.2 Weak cluster — pets" },
-              extraNonClustering: [{ pos: 20, word: "orava" }],
-              meanClusterSize: 2.8,
-              switches: 9,
-            },
-          ],
-        },
-      ],
-
       // Task-discrepant clustering: phonemic clusters found within this
       // semantic trial. Straight from Appendix A's "Task Discrepant
-      // Clustering in Semantic Category 'Animals'" sample protocol — no
-      // ambiguous case is documented for this particular reading.
+      // Clustering in Semantic Category 'Animals'" sample protocol.
       taskDiscrepant: {
         count: 2,
         meanClusterSize: 2.5,
@@ -335,7 +276,6 @@ const VFT_DATA = {
           { pos: 19, word: "hiiri" },
           { pos: 20, word: "orava" },
         ],
-        ambiguousCases: [],
       },
     },
   },

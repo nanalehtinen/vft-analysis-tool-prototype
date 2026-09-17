@@ -704,8 +704,6 @@ button { font-family: inherit; }
   color: var(--text);
 }
 
-.download-note:empty { display: none; }
-
 .download-note {
   margin: 22px 0 0;
   padding-top: 16px;
@@ -720,7 +718,6 @@ button { font-family: inherit; }
   gap: 8px;
 }
 
-/* Step 7: ambiguous-case review */
 /* States once, per table, that a reading was scored by hand — rather than
    badging every row of it. */
 .manual-scored-note {
@@ -731,29 +728,6 @@ button { font-family: inherit; }
 }
 
 .manual-scored-note[hidden] { display: none; }
-
-/* Trial navigation, pinned above the results so the next action is visible
-   on arrival — the results block itself is several screens long. */
-.trial-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-  padding: 12px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-muted);
-}
-
-.trial-nav[hidden] { display: none; }
-
-.trial-nav-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-muted);
-}
 
 /* A neutral note inside a step, e.g. where to find the scoring instructions. */
 .info-note {
@@ -1066,17 +1040,6 @@ button { font-family: inherit; }
   color: var(--text-muted);
 }
 
-.review-case-card {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-muted);
-  padding: 20px;
-}
-
-.review-case-card + .review-case-card {
-  margin-top: 14px;
-}
-
 .review-analysis-label {
   display: inline-block;
   margin-bottom: 10px;
@@ -1088,127 +1051,6 @@ button { font-family: inherit; }
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-}
-
-.review-sequence {
-  margin: 0 0 18px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  font-size: 14.5px;
-  line-height: 1.8;
-  color: var(--text-muted);
-}
-
-.review-highlight {
-  background: var(--rose-tint);
-  color: var(--rose);
-  font-weight: 700;
-  padding: 2px 4px;
-  border-radius: 4px;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-}
-
-.review-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-
-.review-option-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  text-align: left;
-  padding: 14px 16px;
-  border: 1.5px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  cursor: pointer;
-}
-
-.review-option-card:hover {
-  border-color: var(--primary);
-}
-
-.review-option-card.is-selected {
-  border-color: var(--primary);
-  background: var(--primary-tint);
-}
-
-.review-option-title {
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.review-option-desc {
-  font-size: 12.5px;
-  color: var(--text-muted);
-  line-height: 1.45;
-}
-
-.review-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 6px;
-  padding: 32px 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-muted);
-}
-
-.review-empty-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--teal-tint);
-  color: var(--teal);
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.review-empty-title {
-  margin: 0;
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.review-empty-desc {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-/* Cluster-row review badges (results table) */
-.cluster-review-badge {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-.cluster-review-badge.is-reviewed {
-  background: var(--teal-tint);
-  color: var(--teal);
-}
-
-.cluster-review-badge.is-flagged {
-  background: var(--rose-tint);
-  color: var(--rose);
 }
 
 .trial-count-row {
