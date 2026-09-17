@@ -85,7 +85,8 @@ const VFT_DATA = {
   // ---------------------------------------------------------------------
   // SYNTHETIC DATA — for the batch / group-view demonstration only.
   //
-  // These trials (five per language) were generated for this prototype. They are NOT
+  // These trials (five per language and task, and per letter for phonemic
+  // trials) were created for this prototype. They are NOT
   // participant data, NOT drawn from the dissertation dataset, and NOT
   // study results. They exist so the group-level view has a realistic
   // spread to aggregate, since the single-trial path reuses one sample
@@ -97,11 +98,40 @@ const VFT_DATA = {
   // it follows deterministic rules and is computed at runtime for Finnish,
   // exactly as the real tool would. For English it is not calculated.
   //
+  // Phonemic trials (Finnish, letters K/A/P) store their phonemic
+  // (task-congruent) reading as `phonemicRanges`, scored under rule 1.1.
+  // The prototype does not implement the phonemic trial rules 1.1-1.5, so
+  // this reading is stored like the published sample protocol's rather than
+  // calculated. Their semantic (task-discrepant) reading is the rater's.
+  //
   // The single-trial path uses `results` below, which is transcribed from
   // the published manual. The two are never mixed.
   // ---------------------------------------------------------------------
   illustrativeBatch: {
     fi: {
+      pvf: {
+        K: [
+          { words: ["kissa", "koira", "kani", "karhu", "kaappi", "katu", "katto", "kangas", "kello", "kenkä", "kirja", "kivi", "koulu", "kori"], errorIndices: [], totalScore: 14, phonemicRanges: [[2,7],[8,9],[10,11],[12,13]] },
+          { words: ["kala", "kana", "karhu", "kahvi", "kakku", "karkki", "kartta", "katto", "katu", "kauppa", "kello", "keitto", "kirja", "kivi", "kone", "kori", "koulu"], errorIndices: [], totalScore: 17, phonemicRanges: [[0,9],[10,11],[12,13],[14,16]] },
+          { words: ["kukka", "kuppi", "kuva", "kumi", "koira", "kissa", "kana", "kaappi", "kangas", "katto", "katu", "kauppa", "kello", "kenkä", "kerma", "kirja", "kivi", "kori", "korkki", "koulu"], errorIndices: [], totalScore: 20, phonemicRanges: [[0,3],[6,11],[12,14],[15,16],[17,19]] },
+          { words: ["kello", "kenkä", "kerma", "kevät", "kirja", "kirkko", "kirves", "kivi", "koira", "kissa", "kani", "karhu", "kone", "kori", "korkki", "koulu", "kukka", "kuppi", "kuva", "kumi", "kaappi", "katu"], errorIndices: [], totalScore: 22, phonemicRanges: [[0,3],[4,7],[10,11],[12,15],[16,19],[20,21]] },
+          { words: ["kaappi", "kahvi", "kala", "kangas", "kartta", "katto", "katu", "kauppa", "kello", "kenkä", "kerma", "kirja", "kirkko", "kivi", "kone", "kori", "korkki", "koulu", "kukka", "kuppi", "kuva", "kissa", "koira", "kani"], errorIndices: [], totalScore: 24, phonemicRanges: [[0,7],[8,10],[11,13],[14,17],[18,20]] },
+        ],
+        A: [
+          { words: ["apina", "appelsiini", "apteekki", "auto", "avain", "avaruus", "aamu", "aalto", "aita", "aika", "ankka", "ankkuri"], errorIndices: [], totalScore: 12, phonemicRanges: [[0,2],[4,5],[6,7],[8,9],[10,11]] },
+          { words: ["aamu", "aamiainen", "aalto", "aarre", "aika", "aita", "apina", "appelsiini", "apteekki", "apu", "auto", "avain", "avaruus", "ankka", "ahven"], errorIndices: [], totalScore: 15, phonemicRanges: [[0,3],[4,5],[6,9],[11,12]] },
+          { words: ["asia", "asema", "askel", "astia", "apina", "appelsiini", "apteekki", "apu", "auto", "avain", "avaruus", "aamu", "aalto", "aarre", "arki", "arvo", "ankka", "ahven"], errorIndices: [], totalScore: 18, phonemicRanges: [[0,3],[4,7],[9,10],[11,13],[14,15]] },
+          { words: ["asia", "asema", "askel", "astia", "apina", "appelsiini", "apteekki", "apu", "auto", "avain", "avaruus", "aamu", "aalto", "aarre", "aita", "aika", "aine", "arki", "arvo", "ankka", "ahven"], errorIndices: [], totalScore: 21, phonemicRanges: [[0,3],[4,7],[9,10],[11,13],[14,16],[17,18]] },
+          { words: ["asia", "asema", "askel", "astia", "apina", "appelsiini", "apteekki", "apu", "avain", "avaruus", "avanto", "avokado", "aamu", "aave", "aalto", "aarre", "aika", "aita", "aine", "aivot", "arki", "arvo", "arpa", "ankka"], errorIndices: [], totalScore: 24, phonemicRanges: [[0,3],[4,7],[8,11],[12,15],[16,19],[20,22]] },
+        ],
+        P: [
+          { words: ["paita", "pipo", "puku", "pallo", "pankki", "paperi", "peili", "perhe", "piano", "pilvi", "posti", "porkkana", "puu"], errorIndices: [], totalScore: 13, phonemicRanges: [[3,5],[6,7],[8,9],[10,11]] },
+          { words: ["pallo", "pankki", "paperi", "parta", "peili", "perhe", "pelto", "piano", "piha", "pilvi", "poika", "posti", "porkkana", "puu", "pullo", "puisto"], errorIndices: [], totalScore: 16, phonemicRanges: [[0,3],[4,6],[7,9],[10,12],[13,15]] },
+          { words: ["paita", "pipo", "puku", "pallo", "pankki", "paperi", "parta", "peili", "pelto", "perhe", "piano", "piha", "pilvi", "poika", "posti", "polku", "puu", "pullo", "puisto"], errorIndices: [], totalScore: 19, phonemicRanges: [[3,6],[7,9],[10,12],[13,15],[16,18]] },
+          { words: ["pallo", "pankki", "paperi", "parta", "peili", "pelto", "perhe", "peitto", "piano", "piha", "pilvi", "pippuri", "poika", "polku", "posti", "porkkana", "puu", "pullo", "puisto", "pussi", "paita", "pipo"], errorIndices: [], totalScore: 22, phonemicRanges: [[0,3],[4,7],[8,11],[12,15],[16,19]] },
+          { words: ["paita", "pipo", "puku", "pallo", "pankki", "paperi", "parta", "paikka", "peili", "pelto", "perhe", "peitto", "peruna", "piano", "piha", "pilvi", "pippuri", "pisara", "poika", "polku", "posti", "porkkana", "poski", "puu", "pullo"], errorIndices: [], totalScore: 25, phonemicRanges: [[3,7],[8,12],[13,17],[18,22],[23,24]] },
+        ],
+      },
       svf: [
         { words: ["virtahepo", "norsu", "seepra", "kani", "leijona", "koira", "delfiini", "hylje", "mursu", "valas", "ilves", "peura", "mäyrä", "hirvi", "kettu"], errorIndices: [], totalScore: 15 },
         { words: ["lehmä", "käärme", "sammakko", "sisilisko", "perhonen", "ilves", "ahma", "kuha", "lohi", "silakka", "ahven", "krokotiili", "kotka", "haukka", "merikotka", "kanahaukka", "tiikeri", "apina", "krokotiili", "hamsteri", "marsu", "kissa", "koira", "perhonen", "mehiläinen", "kärpänen", "ampiainen", "kettu"], errorIndices: [18, 23], totalScore: 26 },

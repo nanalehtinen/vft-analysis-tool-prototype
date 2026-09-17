@@ -7,6 +7,7 @@
     trialMode: null,
     trialCount: 5,
     trialsReady: false,
+    letter: "K",
   };
 
   function goToTab(name) {
@@ -100,6 +101,7 @@
   }
 
   function fillPvfExamplePrompt(letter) {
+    state.letter = letter;
     const lang = state.dataLanguage || "en";
     const entry = VFT_DATA.prompts[lang] && VFT_DATA.prompts[lang].pvf;
     if (!entry) return;
@@ -271,13 +273,13 @@
   if (btnReviewBack) {
     btnReviewBack.addEventListener("click", () => {
       // From the first trial, back means the import step; otherwise it means
-      // the previous trial's results, so a rater can revise what they scored.
+      // the previous trial, so a rater can revise what they scored.
       if (batch.current === 0) {
         step7Review.hidden = true;
         step7Input.hidden = false;
       } else {
         batch.current -= 1;
-        showTrialResults();
+        showScoringScreen();
       }
     });
   }
@@ -286,7 +288,11 @@
     btnContinueToResults.addEventListener("click", () => {
       if (btnContinueToResults.disabled) return;
       batch.scored[batch.current] = manualClusters.map((c) => ({ s: c.s, e: c.e }));
-      showTrialResults();
+      if (batch.count > 1) {
+        advanceTrial();
+      } else {
+        showTrialResults();
+      }
     });
   }
 
@@ -537,7 +543,11 @@
     const isBatch = batch.count > 1;
     const continueLabel = document.getElementById("continue-to-results-label");
     if (continueLabel) {
-      continueLabel.textContent = isBatch ? "View trial results" : "View results";
+      continueLabel.textContent = !isBatch
+        ? "View results"
+        : batch.current < batch.count - 1
+          ? "Next trial"
+          : "View group results";
     }
     const scoringCount = document.getElementById("scoring-step-count");
     if (scoringCount) {
@@ -642,7 +652,9 @@
   function syntheticSet() {
     const lang = state.dataLanguage || "fi";
     const byLang = VFT_DATA.illustrativeBatch && VFT_DATA.illustrativeBatch[lang];
-    return (byLang && byLang[state.taskType]) || null;
+    const set = byLang && byLang[state.taskType];
+    if (!set) return null;
+    return Array.isArray(set) ? set : set[state.letter] || null;
   }
 
   function usingSyntheticBatch() {
@@ -739,10 +751,38 @@
     return (byLang && byLang[state.taskType]) || null;
   }
 
+  // A stored phonemic reading, as index ranges, in the shape the results
+  // renderer expects from a rule-based reading.
+  function phonemicReadingFromRanges(words, ranges) {
+    const covered = new Set();
+    const clusters = ranges.map(([a, b]) => {
+      for (let i = a; i <= b; i++) covered.add(i);
+      return {
+        pos: a,
+        words: words.slice(a, b + 1),
+        rule: "1.1 Word-initial phonemes (shared " + words[a].slice(0, 2) + "-)",
+      };
+    });
+    const nonClusteringWords = [];
+    words.forEach((w, i) => {
+      if (!covered.has(i)) nonClusteringWords.push({ pos: i, word: w });
+    });
+    const inClusters = clusters.reduce((n, c) => n + c.words.length, 0);
+    return {
+      clusters: clusters,
+      nonClusteringWords: nonClusteringWords,
+      ambiguousCases: [],
+      meanClusterSize: clusters.length ? inClusters / clusters.length : 0,
+      switches: Math.max(clusters.length + nonClusteringWords.length - 1, 0),
+      count: clusters.length,
+    };
+  }
+
   function syntheticTrial(index) {
     const src = syntheticSet()[index];
-    return {
-      trialLabel: "Semantic (SVF) — category Animals",
+    const phonemic = state.taskType === "pvf";
+    const base = {
+      trialLabel: phonemic ? "Phonemic (PVF) — letter " + state.letter : "Semantic (SVF) — category Animals",
       synthetic: true,
       words: src.words,
       errorIndices: src.errorIndices,
@@ -752,15 +792,19 @@
         note: "Excluded from the total score; included in its cluster.",
       })),
       totalScore: src.totalScore,
-      // The semantic (task-congruent) reading comes from the rater, so there
-      // is no rule-based reading to seed here.
+      // In a semantic trial the task-congruent reading comes from the rater,
+      // so there is no rule-based reading to seed.
       clusters: [],
       nonClusteringWords: [],
       ambiguousCases: [],
       meanClusterSize: 0,
       switches: 0,
-      taskDiscrepant: phonemicDiscrepantUnavailable() ? null : buildPhonemicReading(src.words, src.errorIndices),
+      // In a phonemic trial the task-discrepant reading is semantic and comes
+      // from the rater.
+      taskDiscrepant:
+        phonemic || phonemicDiscrepantUnavailable() ? null : buildPhonemicReading(src.words, src.errorIndices),
     };
+    return phonemic ? Object.assign(base, phonemicReadingFromRanges(src.words, src.phonemicRanges)) : base;
   }
 
   function activeTrial() {
@@ -1214,7 +1258,11 @@
       singleTag.textContent = (state.dataLanguage || "fi") === "fi" ? "Published sample protocol" : "Translated sample protocol";
     }
     const lang = state.dataLanguage || "fi";
-    const singleAllowed = lang === "fi" || !!((VFT_DATA.translatedExample[lang] || {})[state.taskType]);
+    // The published phonemic sample protocol uses the letter K only.
+    const singleAllowed =
+      lang === "fi"
+        ? state.taskType !== "pvf" || state.letter === "K"
+        : !!((VFT_DATA.translatedExample[lang] || {})[state.taskType]);
 
     const batchCard = grid.querySelector('.choice-card[data-value="multiple"]');
     const singleCard = grid.querySelector('.choice-card[data-value="single"]');
