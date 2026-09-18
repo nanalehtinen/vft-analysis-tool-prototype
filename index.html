@@ -187,23 +187,62 @@
         </div>
       </div>
 
-      <!-- Step 5: task-discrepant clustering -->
-      <div class="step" data-step="5" data-requires="includeDiscrepant">
+      <!-- Step 5: measures -->
+      <div class="step" data-step="5" data-requires="measureSet">
         <div class="step-card">
-          <h2>Include task-discrepant clustering?</h2>
-          <p class="step-help">Clusters in a different domain than the task — semantic clusters for the phonemic trial and phonemic clusters for the semantic trial.</p>
+          <h2>Measures</h2>
+          <p class="step-help">Select the measures to score.</p>
 
-          <div class="choice-grid" data-field="includeDiscrepant">
-            <button type="button" class="choice-card" data-value="yes">
-              <span class="choice-title">Include</span>
-              <span class="choice-sub" id="discrepant-include-sub">Phonemic clusters for semantic trials are calculated automatically. Semantic clusters for phonemic trials are scored manually for each trial.</span>
-              <span class="choice-sub discrepant-note" hidden>Excluded from this prototype for English</span>
+          <div class="choice-grid" data-field="measureSet">
+            <button type="button" class="choice-card" data-value="full">
+              <span class="choice-title">Full protocol</span>
+              <span class="choice-sub">Total score, errors, temporal parameters, and task-congruent and task-discrepant clustering.</span>
             </button>
-            <button type="button" class="choice-card" data-value="no">
-              <span class="choice-title">Leave out</span>
-              <span class="choice-sub">Not scored or reported.</span>
+            <button type="button" class="choice-card" data-value="custom">
+              <span class="choice-title">Custom</span>
+              <span class="choice-sub">Select the measures. Total score and errors are always included.</span>
             </button>
           </div>
+
+          <ul class="measure-list" id="measure-list" hidden>
+            <li>
+              <label class="measure-option is-locked">
+                <input type="checkbox" checked disabled>
+                <span class="measure-option-body">
+                  <span class="measure-option-title">Total score and errors</span>
+                  <span class="measure-option-sub">Always included.</span>
+                </span>
+              </label>
+            </li>
+            <li>
+              <label class="measure-option">
+                <input type="checkbox" data-measure="temporal">
+                <span class="measure-option-body">
+                  <span class="measure-option-title">Temporal parameters</span>
+                  <span class="measure-option-sub">Words produced per 15-second segment.</span>
+                </span>
+              </label>
+            </li>
+            <li>
+              <label class="measure-option">
+                <input type="checkbox" data-measure="congruent">
+                <span class="measure-option-body">
+                  <span class="measure-option-title">Task-congruent clustering</span>
+                  <span class="measure-option-sub" id="measure-congruent-sub"></span>
+                </span>
+              </label>
+            </li>
+            <li>
+              <label class="measure-option">
+                <input type="checkbox" data-measure="discrepant">
+                <span class="measure-option-body">
+                  <span class="measure-option-title">Task-discrepant clustering</span>
+                  <span class="measure-option-sub" id="measure-discrepant-sub"></span>
+                  <span class="measure-option-note" data-note="discrepant">Excluded from this prototype for English</span>
+                </span>
+              </label>
+            </li>
+          </ul>
         </div>
 
         <div class="step-actions">
@@ -214,6 +253,7 @@
           </button>
         </div>
       </div>
+
       <!-- Step 6: trial count -->
       <div class="step" data-step="6" data-requires="trialsReady">
         <div class="step-card">
@@ -375,9 +415,9 @@
                   <th>Trial</th>
                   <th>Total score</th>
                   <th>Errors</th>
-                  <th>Clusters</th>
-                  <th>Mean cluster size</th>
-                  <th>Switches</th>
+                  <th class="group-congruent-header">Clusters</th>
+                  <th class="group-congruent-header">Mean cluster size</th>
+                  <th class="group-congruent-header">Switches</th>
                   <th class="group-discrepant-header">Task-discrepant clusters</th>
                   <th class="group-discrepant-header">Task-discrepant mean size</th>
                 </tr>
@@ -422,7 +462,7 @@
           <li><span class="guidance-step-num">2</span><div><strong>Task type</strong><span>Determines the clustering and switching rules applied.</span></div></li>
           <li><span class="guidance-step-num">3</span><div><strong>Task prompt</strong><span>The instruction given to the participant, stored with the results.</span></div></li>
           <li><span class="guidance-step-num">4</span><div><strong>Data format</strong><span>Transcripts or voice recordings. Voice recordings are excluded from this prototype.</span></div></li>
-          <li><span class="guidance-step-num">5</span><div><strong>Task-discrepant clustering</strong><span>Include or leave out clusters in the other domain. Scored automatically in semantic trials and manually in phonemic trials.</span></div></li>
+          <li><span class="guidance-step-num">5</span><div><strong>Measures</strong><span>The full protocol, or a custom selection of measures. Total score and errors are always included.</span></div></li>
           <li><span class="guidance-step-num">6</span><div><strong>Number of trials</strong><span>A single trial, or a batch of trials from one participant group answering the same prompt.</span></div></li>
           <li><span class="guidance-step-num">7</span><div><strong>Import data</strong><span>Import transcripts or voice files. Demonstration data can be loaded for easy access.</span></div></li>
           <li><span class="guidance-step-num">8</span><div><strong>Automated analysis</strong><span>Automated results for all trials, and the measures that still need manual scoring.</span></div></li>
@@ -441,7 +481,7 @@
         <p class="guidance-p">Clustering is scored in two independent readings:</p>
         <ul class="guidance-list">
           <li><strong>Task-congruent clustering.</strong> Clusters in the same domain as the task. Number of clusters, mean cluster size and number of switches are based on this reading.</li>
-          <li><strong>Task-discrepant clustering.</strong> Optional. Clusters in the other domain, e.g. semantic clusters in a phonemic trial. Reported as a separate number of clusters and mean cluster size.</li>
+          <li><strong>Task-discrepant clustering.</strong> Clusters in the other domain, e.g. semantic clusters in a phonemic trial. Reported as a separate number of clusters and mean cluster size.</li>
         </ul>
         <ul class="guidance-defs">
           <li><strong>Cluster tables.</strong> Every word in order of production, including non-clustering single words.</li>

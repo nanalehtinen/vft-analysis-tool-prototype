@@ -294,6 +294,78 @@ button { font-family: inherit; }
   color: var(--text-muted);
 }
 
+/* Step 5: the custom measure checklist. */
+.measure-list {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.measure-list[hidden] { display: none; }
+
+.measure-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.measure-option input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.measure-option.is-locked,
+.measure-option.is-locked input {
+  cursor: default;
+}
+
+.measure-option.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.measure-option.is-disabled input { cursor: not-allowed; }
+
+.measure-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.measure-option-title {
+  font-weight: 700;
+  font-size: 14.5px;
+}
+
+.measure-option-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.measure-option-note {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.measure-option-note[hidden] { display: none; }
+
 .badge {
   display: inline-block;
   margin-top: 2px;
@@ -784,6 +856,12 @@ button { font-family: inherit; }
   line-height: 1.1;
 }
 
+.group-stat.is-unavailable { opacity: 0.55; }
+
+.group-stat.is-unavailable .group-stat-value { color: var(--text-muted); }
+
+.group-stat.is-unavailable .group-stat-meta { white-space: normal; }
+
 .group-stat-meta {
   font-size: 11px;
   color: var(--text-muted);
@@ -825,6 +903,12 @@ button { font-family: inherit; }
 .group-detail-row .error-list + .group-detail-heading,
 .group-detail-row .error-none + .group-detail-heading {
   margin-top: 22px;
+}
+
+.word-sequence {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .error-list {

@@ -8,8 +8,10 @@
     trialCount: 5,
     trialsReady: false,
     letter: "K",
-    // "yes" / "no", chosen in step 5.
-    includeDiscrepant: null,
+    // Step 5: "full" or "custom". Total score and errors are always scored;
+    // under "custom", `measures` says which of the rest were ticked.
+    measureSet: null,
+    measures: { temporal: false, congruent: false, discrepant: false },
   };
 
   function goToTab(name) {
@@ -364,25 +366,25 @@
     const type = state.taskType || "pvf";
     const trials = readyTrials();
     const phonemic = !semanticIsCongruent(type);
-    const disc = discrepantState(type);
     const languageName = (state.dataLanguage || "fi") === "fi" ? "Finnish" : "English";
 
     document.getElementById("ready-summary").textContent =
       trials.length + (trials.length === 1 ? " trial" : " trials") + " · " + trials[0].trialLabel + " · " + languageName;
 
-    // List the automated measures, with unavailable and omitted ones marked.
+    // List the selected measures that are scored automatically, with the
+    // unavailable ones marked. Measures scored by hand come in the next step.
     const values = (VFT_DATA.scoredValues && VFT_DATA.scoredValues[type]) || [];
-    const hasAudio = state.mediaType === "voice";
     const auto = [];
     values.forEach((v) => {
-      if (v.key === "temporal" && !hasAudio) {
-        auto.push({ v: v, note: "Requires audio. Excluded from this prototype." });
+      if (v.key === "temporal") {
+        if (!measureSelected("temporal")) return;
+        auto.push(temporalUnavailable() ? { v: v, note: "Requires voice recordings. Excluded from this prototype." } : { v: v });
       } else if (v.key === "discrepant" || v.key === "discrepantSize") {
-        if (disc === "english") auto.push({ v: v, note: "Excluded from this prototype for English" });
-        else if (disc === "omitted") auto.push({ v: v, note: "Left out in step 5" });
+        if (!measureSelected("discrepant")) return;
+        if (phonemicDiscrepantUnavailable(type)) auto.push({ v: v, note: "Excluded from this prototype for English" });
         else if (!phonemic) auto.push({ v: v });
-      } else if ((v.key === "count" || v.key === "clusterSize" || v.key === "switches") && !phonemic) {
-        // Scored by hand in the next step.
+      } else if (v.key === "count" || v.key === "clusterSize" || v.key === "switches") {
+        if (congruentIncluded() && phonemic) auto.push({ v: v });
       } else {
         auto.push({ v: v });
       }
@@ -737,21 +739,31 @@
     return discrepantIsPhonemic(type) && (state.dataLanguage || "fi") !== "fi";
   }
 
+  // Whether a measure was chosen in step 5. Chosen is not the same as
+  // available: temporal parameters also need audio, and the phonemic
+  // task-discrepant reading is excluded for English.
+  function measureSelected(key) {
+    return state.measureSet === "full" || (state.measureSet === "custom" && !!state.measures[key]);
+  }
+
+  function temporalUnavailable() {
+    return state.mediaType !== "voice";
+  }
+
+  function congruentIncluded() {
+    return measureSelected("congruent");
+  }
+
   // Whether the task-discrepant reading is scored in this run. Left out by
   // choice is not the same as zero clusters: an omitted reading has no value.
   function discrepantIncluded(type) {
-    return state.includeDiscrepant === "yes" && !phonemicDiscrepantUnavailable(type);
+    return measureSelected("discrepant") && !phonemicDiscrepantUnavailable(type);
   }
 
-  function discrepantState(type) {
-    if (phonemicDiscrepantUnavailable(type)) return "english";
-    return discrepantIncluded(type) ? "shown" : "omitted";
-  }
-
-  // The semantic reading of a semantic trial is always scored by hand; a
-  // phonemic trial needs a manual pass only for its task-discrepant reading.
+  // Only semantic readings are scored by hand: the task-congruent one in a
+  // semantic trial, the task-discrepant one in a phonemic trial.
   function needsManualPass(type) {
-    return semanticIsCongruent(type) || discrepantIncluded(type);
+    return semanticIsCongruent(type) ? congruentIncluded() : discrepantIncluded(type);
   }
 
   // Three or more consecutive words sharing an initial phoneme form a cluster
@@ -919,7 +931,6 @@
       ...r,
       ...congruent,
       taskDiscrepant: discrepant,
-      discrepantState: discrepantState(type),
       semanticIsCongruent: semanticIsCongruent(type),
     };
   }
@@ -996,7 +1007,7 @@
     });
     if (n === 2) updateTaskTypeAvailability();
     if (n === 3) updatePromptExampleUI();
-    if (n === 5) renderDiscrepantChoice();
+    if (n === 5) renderMeasureChoice();
     if (n === 6) updateTrialModeAvailability();
     if (n === 7) updateStep7InputCopy();
   }
@@ -1080,31 +1091,56 @@
     }
   }
 
-  // --- Step 5: whether to score task-discrepant clustering. What that costs
-  // depends on the task: in a semantic trial the reading is phonemic and
-  // automated; in a phonemic trial it is semantic and scored by hand.
-  function renderDiscrepantChoice() {
-    const grid = document.querySelector('.choice-grid[data-field="includeDiscrepant"]');
-    if (!grid) return;
+  // --- Step 5: measures ------------------------------------------------------
+  // What each clustering reading costs depends on the task: a phonemic reading
+  // is calculated automatically, a semantic one is scored by hand.
+  const measureListEl = document.getElementById("measure-list");
+  const measureBoxes = document.querySelectorAll("input[data-measure]");
+
+  function renderMeasureChoice() {
     const type = state.taskType || "pvf";
-    const include = grid.querySelector('.choice-card[data-value="yes"]');
-    const leaveOut = grid.querySelector('.choice-card[data-value="no"]');
-    const sub = document.getElementById("discrepant-include-sub");
-    const english = phonemicDiscrepantUnavailable(type);
+    const phonemic = type === "pvf";
+    const auto = "calculated automatically.";
+    const manual = "scored manually for each trial.";
+    document.getElementById("measure-congruent-sub").textContent =
+      (phonemic ? "Phonemic clusters, " + auto : "Semantic clusters, " + manual) +
+      " Number of clusters, mean cluster size and number of switches.";
+    document.getElementById("measure-discrepant-sub").textContent =
+      (phonemic ? "Semantic clusters, " + manual : "Phonemic clusters, " + auto) +
+      " Number of clusters and mean cluster size.";
 
-    if (sub) sub.hidden = english;
-    setCardAvailable(include, !english, "discrepant-note");
-
-    if (english) {
-      state.includeDiscrepant = "no";
-      leaveOut.classList.add("is-selected");
-    } else if (state.includeDiscrepant) {
-      grid.querySelectorAll(".choice-card").forEach((c) => {
-        c.classList.toggle("is-selected", c.dataset.value === state.includeDiscrepant);
-      });
-    }
-    updateStepValidity(grid.closest(".step"));
+    // Temporal parameters can be chosen as if audio were supported; the
+    // prototype then shows them as unavailable in the results.
+    const unavailable = {
+      temporal: false,
+      congruent: false,
+      discrepant: phonemicDiscrepantUnavailable(type),
+    };
+    measureBoxes.forEach((box) => {
+      const key = box.dataset.measure;
+      const off = unavailable[key];
+      if (off) state.measures[key] = false;
+      box.disabled = off;
+      box.checked = !!state.measures[key];
+      box.closest(".measure-option").classList.toggle("is-disabled", off);
+      const note = document.querySelector('[data-note="' + key + '"]');
+      if (note) note.hidden = !off;
+    });
+    measureListEl.hidden = state.measureSet !== "custom";
+    updateStepValidity(measureListEl.closest(".step"));
   }
+
+  document.querySelectorAll('.choice-grid[data-field="measureSet"] .choice-card').forEach((card) => {
+    card.addEventListener("click", () => {
+      measureListEl.hidden = card.dataset.value !== "custom";
+    });
+  });
+
+  measureBoxes.forEach((box) => {
+    box.addEventListener("change", () => {
+      state.measures[box.dataset.measure] = box.checked;
+    });
+  });
 
   // --- Data provenance ------------------------------------------------------
   // Every screen that shows numbers states where those numbers came from, so
@@ -1201,14 +1237,23 @@
         ? "All " + batch.count + " trials scored."
         : trials.length + " of " + batch.count + " trials scored. Results are incomplete.";
 
+    // Only the measures chosen in step 5 are reported.
+    const showCongruent = congruentIncluded();
     const showDiscrepant = discrepantIncluded(type);
     const metrics = [
       { label: "Total score", dp: 1, get: (r) => r.totalScore },
       { label: "Errors", dp: 1, get: (r) => r.errors.length },
-      { label: type === "pvf" ? "Number of phonemic clusters" : "Number of semantic clusters", dp: 1, get: (r) => clusterCount(r) },
-      { label: type === "pvf" ? "Mean phonemic cluster size" : "Mean semantic cluster size", dp: 2, size: true, get: (r) => r.meanClusterSize },
-      { label: "Number of switches", dp: 1, get: (r) => r.switches },
     ];
+    if (measureSelected("temporal") && temporalUnavailable()) {
+      metrics.push({ label: "Temporal parameters", unavailable: "Requires voice recordings. Excluded from this prototype." });
+    }
+    if (showCongruent) {
+      metrics.push(
+        { label: type === "pvf" ? "Number of phonemic clusters" : "Number of semantic clusters", dp: 1, get: (r) => clusterCount(r) },
+        { label: type === "pvf" ? "Mean phonemic cluster size" : "Mean semantic cluster size", dp: 2, size: true, get: (r) => r.meanClusterSize },
+        { label: "Number of switches", dp: 1, get: (r) => r.switches }
+      );
+    }
     if (showDiscrepant) {
       metrics.push({ label: "Task-discrepant clusters", dp: 1, get: (r) => (r.taskDiscrepant ? r.taskDiscrepant.count : 0) });
       metrics.push({ label: "Mean task-discrepant cluster size", dp: 2, size: true, get: (r) => (r.taskDiscrepant ? r.taskDiscrepant.meanClusterSize : 0) });
@@ -1216,6 +1261,15 @@
 
     groupStatGridEl.innerHTML = metrics
       .map((metric) => {
+        if (metric.unavailable) {
+          return `
+          <div class="group-stat is-unavailable">
+            <span class="group-stat-label">${metric.label}</span>
+            <span class="group-stat-value">N/A</span>
+            <span class="group-stat-meta">${metric.unavailable}</span>
+          </div>
+        `;
+        }
         const values = trials.map((t) => Number(metric.get(t.result)));
         const sd = stdDev(values);
         const lo = Math.min.apply(null, values);
@@ -1234,21 +1288,27 @@
       })
       .join("");
 
+    document.querySelectorAll(".group-congruent-header").forEach((th) => {
+      th.hidden = !showCongruent;
+    });
     document.querySelectorAll(".group-discrepant-header").forEach((th) => {
       th.hidden = !showDiscrepant;
     });
+    const columns = 3 + (showCongruent ? 3 : 0) + (showDiscrepant ? 2 : 0);
 
     groupTrialBodyEl.innerHTML = trials
       .map((t) => {
         const r = t.result;
         return `
-          <tr class="group-trial-row${single ? " is-open" : ""}" data-trial="${t.index}" title="Show this trial's cluster breakdown">
+          <tr class="group-trial-row${single ? " is-open" : ""}" data-trial="${t.index}" title="Show this trial's details">
             <td><span class="group-trial-name">Trial ${t.index + 1}</span></td>
             <td>${r.totalScore}</td>
             <td>${r.errors.length}</td>
-            <td>${clusterCount(r)}</td>
-            <td>${fmt(r.meanClusterSize)}</td>
-            <td>${r.switches}</td>
+            ${
+              showCongruent
+                ? "<td>" + clusterCount(r) + "</td><td>" + fmt(r.meanClusterSize) + "</td><td>" + r.switches + "</td>"
+                : ""
+            }
             ${
               showDiscrepant
                 ? "<td>" + (r.taskDiscrepant ? r.taskDiscrepant.count : "—") + "</td>" +
@@ -1257,7 +1317,7 @@
             }
           </tr>
           <tr class="group-detail-row" data-detail="${t.index}"${single ? "" : " hidden"}>
-            <td colspan="${showDiscrepant ? 8 : 6}">
+            <td colspan="${columns}">
               <h4 class="group-detail-heading">Errors</h4>
               ${
                 r.errors.length
@@ -1266,14 +1326,16 @@
                     "</ul>"
                   : '<p class="error-none">No errors.</p>'
               }
-              <h4 class="group-detail-heading">Task-congruent clusters</h4>
-              ${r.semanticIsCongruent ? '<p class="manual-scored-note">' + MANUAL_SCORED_NOTE + "</p>" : ""}
-              <div class="cluster-table-wrap">
-                <table class="cluster-table">
-                  <thead><tr><th>Words</th><th>Size</th><th>Rule applied</th></tr></thead>
-                  <tbody>${renderClusterRows(r.rows, r.errorIndices)}</tbody>
-                </table>
-              </div>
+              ${
+                showCongruent
+                  ? '<h4 class="group-detail-heading">Task-congruent clusters</h4>' +
+                    (r.semanticIsCongruent ? '<p class="manual-scored-note">' + MANUAL_SCORED_NOTE + "</p>" : "") +
+                    '<div class="cluster-table-wrap"><table class="cluster-table">' +
+                    "<thead><tr><th>Words</th><th>Size</th><th>Rule applied</th></tr></thead>" +
+                    "<tbody>" + renderClusterRows(r.rows, r.errorIndices) + "</tbody>" +
+                    "</table></div>"
+                  : ""
+              }
               ${
                 showDiscrepant
                   ? '<h4 class="group-detail-heading">Task-discrepant clusters</h4>' +
@@ -1283,6 +1345,14 @@
                     "<tbody>" + (r.taskDiscrepant ? renderClusterRows(r.taskDiscrepant.rows, r.errorIndices) : "") + "</tbody>" +
                     "</table></div>"
                   : ""
+              }
+              ${
+                showCongruent || showDiscrepant
+                  ? ""
+                  : '<h4 class="group-detail-heading">Words in order of production</h4>' +
+                    '<p class="word-sequence">' +
+                    r.words.map((w, i) => (r.errorIndices.indexOf(i) !== -1 ? w + " (error)" : w)).join(", ") +
+                    "</p>"
               }
             </td>
           </tr>
