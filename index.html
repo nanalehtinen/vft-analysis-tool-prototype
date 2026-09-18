@@ -426,19 +426,24 @@
             </table>
           </div>
 
-          <p class="download-note">CSV (one row per cluster) or JSON, for analysis in R, SPSS or Python. Download is disabled for this prototype.</p>
+          <div class="download-section">
+            <h3 class="results-subheading">Download</h3>
+            <p class="download-note">Download results for analysis in R, SPSS or Python. Download is disabled for this prototype.</p>
+            <ul class="download-formats">
+              <li><strong>Summary CSV.</strong> One row per trial with the selected measures.</li>
+              <li><strong>Word-level CSV.</strong> One row per word in production order, with errors and clusters marked.</li>
+              <li><strong>JSON.</strong> The structured transcript with the selected measures.</li>
+            </ul>
+            <div class="download-btn-group">
+              <button type="button" class="btn btn-secondary" disabled title="Download is disabled for this prototype">Summary CSV</button>
+              <button type="button" class="btn btn-secondary" disabled title="Download is disabled for this prototype">Word-level CSV</button>
+              <button type="button" class="btn btn-secondary" disabled title="Download is disabled for this prototype">JSON</button>
+            </div>
+          </div>
         </div>
 
         <div class="step-actions">
           <button type="button" class="btn btn-secondary" id="btn-group-back">← <span>Back to scoring</span></button>
-          <div class="download-btn-group">
-            <button type="button" class="btn btn-secondary" disabled title="Download is disabled for this prototype">
-              <span>Download JSON</span>
-            </button>
-            <button type="button" class="btn btn-primary" disabled title="Download is disabled for this prototype">
-              <span>Download CSV</span>
-            </button>
-          </div>
         </div>
       </div>
 
